@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #0c0a08;
+  --ink-2: #1a1919;
+  --ink-3: #2a2826;
+  --paper: #f4f2f0;
+  --paper-2: #ebe8e4;
+  --white: #ffffff;
+  --line: #d2cecb;
+  --line-soft: #e4e0dc;
+  --muted: #6e6a68;
+  --solar: #e4f222;
+  --solar-light: #f5ff78;
+  --solar-deep: #c9d60c;
+  --smolder: #17332d;
+  --spring: #5683d2;
+  --spring-light: #e4ebf6;
+  --danger: #c2410c;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+  --color-muted: var(--muted);
+  --color-solar: var(--solar);
+  --color-solar-light: var(--solar-light);
+  --color-solar-deep: var(--solar-deep);
+  --color-smolder: var(--smolder);
+  --color-spring: var(--spring);
+  --color-spring-light: var(--spring-light);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-sans-face), ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, "SF Mono", Menlo, monospace;
+  --ease-out-emph: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-std: cubic-bezier(0.2, 0, 0, 1);
+}
+
+html {
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+}
+
+::selection {
+  background: var(--solar);
+  color: var(--ink);
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.display {
+  font-weight: 300;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.dark :focus-visible {
+  outline-color: var(--solar);
+}
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--paper-2) 0%, var(--white) 50%, var(--paper-2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@keyframes caret {
+  50% { opacity: 0; }
+}
+
+.caret::after {
+  content: "";
+  display: inline-block;
+  width: 0.5ch;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.12em;
+  background: currentColor;
+  animation: caret 1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
