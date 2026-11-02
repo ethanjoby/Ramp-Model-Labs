@@ -21,7 +21,21 @@ export default function LabsPage() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    api<Lab[]>("/api/labs").then(setLabs).catch((e) => setErr(e.message));
+    let timer = 0;
+    const load = () => api<Lab[]>("/api/labs").then((l) => {
+      setLabs(l);
+      window.clearTimeout(timer);
+      if (l.some((x) => x.status === "queued" || x.status === "running")) timer = window.setTimeout(load, 4000);
+    }).catch((e) => setErr(e.message));
+    load();
+    const onVisible = () => { if (document.visibilityState === "visible") load(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
   }, []);
 
   return (

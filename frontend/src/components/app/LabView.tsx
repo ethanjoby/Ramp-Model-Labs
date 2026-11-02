@@ -70,7 +70,8 @@ export function LabView() {
 
       {result && (
         <div className="mt-6">
-          <WinnerCard result={result} spec={spec} onOpen={slug ? () => router.push(`/app/models/${slug}`) : undefined} />
+          <WinnerCard result={result} spec={spec} evalSource={lab?.eval_source ?? dataset?.eval_source} nEval={lab?.n_eval ?? dataset?.test}
+            onOpen={slug ? () => router.push(`/app/models/${slug}`) : undefined} />
         </div>
       )}
 

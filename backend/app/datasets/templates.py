@@ -88,13 +88,13 @@ _MEMOS = {
 }
 
 
-def gen_expense(r: random.Random) -> tuple[str, str]:
+def gen_expense(r: random.Random, noise: bool = True) -> tuple[str, str]:
     label = r.choice(list(EXPENSE_MERCHANTS))
     merchants, (lo, hi) = EXPENSE_MERCHANTS[label]
     m = r.choice(merchants)
     # realistic ambiguity: Amazon marketplace can be office supplies or training (kindle)
-    if r.random() < 0.035:
-        label = r.choice(list(EXPENSE_MERCHANTS))
+    _alt = r.choice(list(EXPENSE_MERCHANTS))  # drawn in both modes so noise on/off share one text sequence
+    flip = r.random() < 0.035 and noise  # applied after the text is built: noise flips the label, never the row
     prefix = r.choice(_PREFIXES) if "*" not in m else ""
     store = f" #{r.randint(100, 9999)}" if r.random() < 0.3 else ""
     ref = f"*{_ref(r)}" if r.random() < 0.25 else ""
@@ -103,14 +103,14 @@ def gen_expense(r: random.Random) -> tuple[str, str]:
         desc = desc.title()
     memo = r.choice(_MEMOS[label])
     text = f"{desc} | {_amount(r, lo, hi)}" + (f" | memo: {memo}" if memo else "")
-    return text, label
+    return text, (_alt if flip else label)
 
 
 # ----------------------------------------------------------------------------------
 # Fraud / anomaly screening
 # ----------------------------------------------------------------------------------
 
-def gen_fraud(r: random.Random) -> tuple[str, str]:
+def gen_fraud(r: random.Random, noise: bool = True) -> tuple[str, str]:
     fraud = r.random() < 0.42
     signals: list[str] = []
     score = 0.0
@@ -147,7 +147,7 @@ def gen_fraud(r: random.Random) -> tuple[str, str]:
     if not signals:
         signals.append("no prior alerts")
     label = "fraud" if (score > 1.9) else "legitimate"
-    if r.random() < 0.04:
+    if r.random() < 0.04 and noise:  # the draw always happens, so noise on/off share one text sequence
         label = "legitimate" if label == "fraud" else "fraud"
     text = (f"{channel} {'$'}{amt:,.2f} at {merchant} {hour:02d}:{r.randint(0, 59):02d} local; "
             + "; ".join(signals))
@@ -211,7 +211,7 @@ SUPPORT_INTENTS: dict[str, list[str]] = {
 }
 
 
-def gen_support(r: random.Random) -> tuple[str, str]:
+def gen_support(r: random.Random, noise: bool = True) -> tuple[str, str]:
     label = r.choice(list(SUPPORT_INTENTS))
     t = r.choice(SUPPORT_INTENTS[label]).format(
         merchant=r.choice(["Delta", "Uber", "Home Depot", "AWS", "a hotel", "Costco", "WeWork", "Amazon"]),
@@ -225,8 +225,9 @@ def gen_support(r: random.Random) -> tuple[str, str]:
         t = "Hi team — " + t + ". Thanks!"
     elif style < 0.55:
         t = t + " asap please"
-    if r.random() < 0.05:
-        label = r.choice(list(SUPPORT_INTENTS))
+    _alt = r.choice(list(SUPPORT_INTENTS))  # drawn in both modes so noise on/off share one text sequence
+    if r.random() < 0.05 and noise:
+        label = _alt
     return t, label
 
 
@@ -234,7 +235,7 @@ def gen_support(r: random.Random) -> tuple[str, str]:
 # AP invoice triage
 # ----------------------------------------------------------------------------------
 
-def gen_invoice(r: random.Random) -> tuple[str, str]:
+def gen_invoice(r: random.Random, noise: bool = True) -> tuple[str, str]:
     vendor = r.choice(["Acme Logistics", "Brightline Legal LLP", "Northwind Supply", "Globex Corp",
                        "Initech Consulting", "Stark Facilities", "Umbrella Staffing", "Hooli Cloud"])
     amt = r.lognormvariate(7.6, 1.1)
@@ -262,8 +263,9 @@ def gen_invoice(r: random.Random) -> tuple[str, str]:
     notes = [n.format(d=f"10/{r.randint(1, 28)}", n=r.randint(10000, 99999), p=r.randint(8, 60)) for n in notes if n]
     text = (f"{vendor} INV-{r.randint(10000, 99999)} {'$'}{amt:,.2f}"
             + (f" PO-{r.randint(1000, 9999)}" if po else "") + ("; " + "; ".join(notes) if notes else ""))
-    if r.random() < 0.04:
-        label = r.choice(["approve", "needs_review", "duplicate", "reject"])
+    _alt = r.choice(["approve", "needs_review", "duplicate", "reject"])  # drawn in both modes so noise on/off share one text sequence
+    if r.random() < 0.04 and noise:
+        label = _alt
     return text, label
 
 
@@ -271,7 +273,7 @@ def gen_invoice(r: random.Random) -> tuple[str, str]:
 # Transaction reconciliation
 # ----------------------------------------------------------------------------------
 
-def gen_reconciliation(r: random.Random) -> tuple[str, str]:
+def gen_reconciliation(r: random.Random, noise: bool = True) -> tuple[str, str]:
     """A bank line against its closest ledger entry, with the deltas a matching engine computes."""
     party = r.choice(["ACME LOGISTICS", "NORTHWIND SUPPLY", "GLOBEX CORP", "STARK FACILITIES", "HOOLI CLOUD",
                       "UMBRELLA STAFFING", "BRIGHTLINE LEGAL", "AWS", "GUSTO PAYROLL", "WEWORK"])
@@ -296,8 +298,9 @@ def gen_reconciliation(r: random.Random) -> tuple[str, str]:
     else:
         gl = "GL no candidate entry"
         delta = r.choice(["no ledger match above threshold", "unrecorded bank fee", "no open item for payee"])
-    if r.random() < 0.04:
-        label = r.choice(["matched", "amount_mismatch", "timing_difference", "duplicate", "missing_in_ledger"])
+    _alt = r.choice(["matched", "amount_mismatch", "timing_difference", "duplicate", "missing_in_ledger"])  # drawn in both modes so noise on/off share one text sequence
+    if r.random() < 0.04 and noise:
+        label = _alt
     return f"{bank} | {gl} | {delta}", label
 
 
@@ -308,7 +311,7 @@ class Template:
     description: str
     labels: list[str]
     input_hint: str
-    generator: Callable[[random.Random], tuple[str, str]]
+    generator: Callable[[random.Random, bool], tuple[str, str]]
     keywords: list[str] = field(default_factory=list)
 
 
@@ -347,23 +350,48 @@ TEMPLATES: dict[str, Template] = {
 }
 
 
+# Vocabulary shared across workflows can only break ties; every other keyword, and each template's own label
+# names, pins the prompt to one workflow. Scored on presence, so repeating "transaction" never beats "fraud".
+GENERIC_KEYWORDS = frozenset({
+    "transaction", "bill", "vendor", "customer", "route", "routing", "merchant", "spend", "ledger", "coding",
+    "risk", "intent", "inbox", "duplicate", "bank", "card", "payment",
+})
+MIN_SCORE, MIN_MARGIN = 2, 1
+
+
+def _weight(keyword: str) -> int:
+    return 1 if keyword.strip() in GENERIC_KEYWORDS else 3
+
+
+def template_keywords(t: Template) -> dict[str, int]:
+    words = {k: _weight(k) for k in t.keywords}
+    for label in t.labels:
+        phrase = label.lower().replace("_", " ")
+        words.setdefault(phrase, _weight(phrase))
+    return words
+
+
 def match_template(prompt: str) -> Template | None:
+    """The one built-in workflow a prompt clearly asks for, or None when nothing fits or two fit equally."""
     p = f" {prompt.lower()} "
-    best, best_score = None, 0
-    for t in TEMPLATES.values():
-        score = sum(p.count(k) for k in t.keywords)
-        if score > best_score:
-            best, best_score = t, score
+    ranked = sorted(((sum(w for k, w in template_keywords(t).items() if k in p), t) for t in TEMPLATES.values()),
+                    key=lambda st: st[0], reverse=True)
+    best_score, best = ranked[0]
+    runner_up = ranked[1][0] if len(ranked) > 1 else 0
+    if best_score < MIN_SCORE or best_score < runner_up + MIN_MARGIN:
+        return None
     return best
 
 
-def generate(template: Template, n: int, seed: int = 7) -> list[dict[str, str]]:
+def generate(template: Template, n: int, seed: int = 7, noise: bool = True) -> list[dict[str, str]]:
+    """Rows from a generator. `noise=False` turns off the planted label noise, which is what held-out rows need:
+    a test set with planted mislabels punishes correct answers and caps every candidate at the same ceiling."""
     r = random.Random(seed)
     rows, seen = [], set()
     attempts = 0
     while len(rows) < n and attempts < n * 5:
         attempts += 1
-        text, label = template.generator(r)
+        text, label = template.generator(r, noise)
         if text in seen:
             continue
         seen.add(text)

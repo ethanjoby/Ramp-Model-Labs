@@ -6,7 +6,7 @@ import { ArrowUpRight, Check } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 import { Logo } from "@/components/ui/Logo";
 import { EASE_OUT } from "@/lib/motion";
-import { usd } from "@/lib/format";
+import { num, usd } from "@/lib/format";
 
 function Reveal({ children, delay = 0, className }: { children: React.ReactNode; delay?: number; className?: string }) {
   return (
@@ -40,8 +40,8 @@ const AGENTS = [
   {
     name: "Trainer",
     title: "Runs competing strategies in parallel",
-    body: "Small specialist models, a LoRA fine-tune of an open model on GPUs, zero-shot LLMs, and a DSPy-style optimized prompt program. Fine-tuning is a candidate, not a default.",
-    detail: ["linear · SVM · tiny MLP", "Qwen2.5 LoRA on Modal L4", "prompt search over instructions + demos"],
+    body: "Small specialist models, a transformer language model fine-tuned on this machine, a LoRA fine-tune of an open model on GPUs, zero-shot LLMs, and a DSPy-style optimized prompt program. Fine-tuning is a candidate, not a default.",
+    detail: ["linear, SVM, tiny MLP", "MiniLM fine-tuned locally", "Qwen2.5 LoRA on Modal L4", "prompt search over instructions + demos"],
   },
   {
     name: "Judge",
@@ -107,8 +107,9 @@ export function Pipeline() {
 // Per-1k-call prices for a ~60-token classification request with a ~250-token instruction.
 const TIERS = [
   { name: "Frontier LLM", sub: "Sonnet-class, every request", per1k: 0.74, tone: "bg-ink/80" },
-  { name: "Small LLM", sub: "Haiku-class, zero-shot", per1k: 0.37, tone: "bg-ink/50" },
+  { name: "Small LLM", sub: "Haiku 5.5, zero-shot", per1k: 0.035, tone: "bg-ink/50" },
   { name: "Fine-tuned 0.5B", sub: "LoRA on a shared L4 GPU", per1k: 0.0056, tone: "bg-solar-deep" },
+  { name: "Fine-tuned MiniLM", sub: "22M params, trained locally, served on CPU", per1k: 0.0001, tone: "bg-solar-deep" },
   { name: "Specialist", sub: "Trained by Model Labs, CPU", per1k: 0.000012, tone: "bg-solar" },
 ];
 
@@ -132,20 +133,20 @@ export function CostCalc() {
 
         <div ref={ref} className="mt-14 grid gap-12 md:grid-cols-[minmax(0,4fr)_minmax(0,8fr)]">
           <div>
-            <label htmlFor="vol" className="text-[13px] text-white/55">Monthly predictions</label>
-            <div className="tnum mt-2 text-[44px] font-light tracking-[-0.03em]">{calls.toLocaleString()}</div>
+            <label htmlFor="vol" className="text-[13px] text-white/60">Monthly predictions</label>
+            <div className="tnum mt-2 text-[44px] font-light tracking-[-0.03em]">{num(calls)}</div>
             <input
               id="vol" type="range" min={4} max={8} step={0.01} value={vol}
               onChange={(e) => setVol(parseFloat(e.target.value))}
               className="mt-5 w-full accent-[var(--solar)]"
             />
-            <div className="mt-2 flex justify-between font-mono text-[11px] text-white/40">
+            <div className="mt-2 flex justify-between font-mono text-[11px] text-white/60">
               <span>10k</span><span>1M</span><span>100M</span>
             </div>
-            <p className="mt-8 max-w-[340px] text-[13px] leading-relaxed text-white/50">
-              Estimates from list prices: Claude Sonnet 5.5 ($2/$10 per MTok), Haiku 4.5 ($1/$5), Modal L4 at
-              $0.80/hr serving ~40 req/s, and measured CPU time of a trained specialist. Every lab reports its own
-              measured numbers.
+            <p className="mt-8 max-w-[340px] text-[13px] leading-relaxed text-white/60">
+              Estimates from list prices: Claude Sonnet 5.5 ($2/$10 per MTok), Haiku 5.5 ($0.10/$0.50), Modal L4 at
+              $0.80/hr serving ~40 req/s, and measured CPU time of a trained specialist or a fine-tuned MiniLM
+              (about 7 ms a call). Every lab reports its own measured numbers.
             </p>
           </div>
           <div className="space-y-5">
@@ -154,9 +155,9 @@ export function CostCalc() {
                 <div className="flex items-baseline justify-between gap-4">
                   <div>
                     <span className="text-[15px]">{r.name}</span>
-                    <span className="ml-2 text-[13px] text-white/45">{r.sub}</span>
+                    <span className="ml-2 text-[13px] text-white/60">{r.sub}</span>
                   </div>
-                  <span className="tnum font-mono text-[15px]">{usd(r.monthly)}<span className="text-white/40">/mo</span></span>
+                  <span className="tnum font-mono text-[15px]">{usd(r.monthly)}<span className="text-white/60">/mo</span></span>
                 </div>
                 <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/[0.07]">
                   <motion.div
@@ -207,7 +208,7 @@ export function Workflows() {
                   onClick={() => setActive(i)}
                   className="flex w-full items-center justify-between py-5 text-left"
                 >
-                  <span className={`text-[20px] tracking-[-0.02em] transition-colors duration-150 ${active === i ? "text-ink" : "text-ink/40"}`}>
+                  <span className={`text-[20px] tracking-[-0.02em] transition-colors duration-150 ${active === i ? "font-normal text-ink" : "font-light text-ink/50"}`}>
                     {w.name}
                   </span>
                   <ArrowUpRight className={`h-5 w-5 transition-[opacity,transform] duration-200 ${active === i ? "opacity-100" : "-translate-x-1 opacity-0"}`} />
@@ -216,7 +217,7 @@ export function Workflows() {
             ))}
           </ul>
           <div className="rounded-3xl bg-ink p-7 text-white md:p-10">
-            <div className="font-mono text-[11px] uppercase tracking-[0.08em] text-white/40">input</div>
+            <div className="font-mono text-[11px] uppercase tracking-[0.08em] text-white/60">input</div>
             <motion.p
               key={`i${active}`}
               initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}
@@ -224,7 +225,7 @@ export function Workflows() {
             >
               {WORKFLOWS[active].input}
             </motion.p>
-            <div className="mt-10 font-mono text-[11px] uppercase tracking-[0.08em] text-white/40">specialist output</div>
+            <div className="mt-10 font-mono text-[11px] uppercase tracking-[0.08em] text-white/60">specialist output</div>
             <motion.div
               key={`o${active}`}
               initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.3, ease: EASE_OUT, delay: 0.12 }}
@@ -249,7 +250,7 @@ export function ApiSection() {
           <p className="text-[13px] text-muted">API</p>
           <h2 className="display mt-5 text-[clamp(36px,4.2vw,54px)]">Every winner is an endpoint.</h2>
           <p className="mt-6 max-w-[440px] text-[16px] leading-relaxed text-muted">
-            Scoped API keys, hashed at rest. Per-model request and latency tracking. Corrections flow back in as
+            Per-account API keys, hashed at rest. Per-model request and latency tracking. Corrections flow back in as
             training data so the next version is better than this one.
           </p>
         </Reveal>
@@ -259,7 +260,7 @@ export function ApiSection() {
   -H "Authorization: Bearer $RML_KEY" \\
   -d '{"inputs": ["UBER *TRIP SAN FRANCISCO CA | $23.10"]}'
 
-`}<span className="text-white/40">{`# 200 OK  ·  0.9ms`}</span>{`
+`}<span className="text-white/60">{`# 200 OK  ·  0.9ms`}</span>{`
 {
   "predictions": [{
     "label": `}<span className="text-solar">{`"Ground Transportation"`}</span>{`,
@@ -289,7 +290,7 @@ export function FinalCta() {
 
 export function Footer() {
   return (
-    <footer className="bg-ink text-white/50">
+    <footer className="bg-ink text-white/60">
       <div className="mx-auto flex max-w-[1240px] flex-col gap-6 px-5 py-10 text-[13px] md:flex-row md:items-center md:justify-between md:px-8">
         <Logo dark />
         <p>Built at the Ramp hackathon. Specialized AI for financial workflows.</p>

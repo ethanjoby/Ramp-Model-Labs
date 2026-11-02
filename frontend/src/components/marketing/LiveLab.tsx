@@ -5,9 +5,9 @@ import { Crown, RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import demo from "./demo-lab.json";
 import { AgentFeed, Leaderboard, StageRail } from "@/components/lab/parts";
-import { ms, multiple, pct, usd } from "@/lib/format";
+import { ms, multiple, num, pct, size, usd } from "@/lib/format";
 import { EASE_OUT } from "@/lib/motion";
-import type { LabEvent } from "@/lib/types";
+import type { CandidateRow, LabEvent } from "@/lib/types";
 import { applyLabEvent, emptyLabState, type LabState } from "@/lib/useLab";
 
 /*
@@ -18,6 +18,10 @@ import { applyLabEvent, emptyLabState, type LabState } from "@/lib/useLab";
 const EVENTS = demo.events as LabEvent[];
 const SPEED = 0.7;
 const MIN_GAP_MS = 160;
+
+// The replayed events carry no dataset payload, so the evaluation basis comes from the recording's summary.
+const TEST_ROWS = demo.dataset.test;
+const EVAL_KIND = /synthetic/.test(demo.dataset.eval_source) ? "synthetic" : "real";
 
 const parseTs = (ts: string) => Date.parse(ts.replace(" ", "T") + (/[zZ]|[+-]\d\d:?\d\d$/.test(ts) ? "" : "Z"));
 
@@ -30,6 +34,9 @@ function schedule(): number[] {
     return t;
   });
 }
+
+const skipReason = (c: CandidateRow) => c.metrics.skip_reason ?? c.reason ?? "";
+const need = (n: number) => `${n} need${n === 1 ? "s" : ""}`;
 
 export function LiveLab() {
   const frame = useRef<HTMLDivElement>(null);
@@ -59,8 +66,19 @@ export function LiveLab() {
     return () => window.clearTimeout(timer);
   }, [inView, run]);
 
+  const candidates = Object.values(state.candidates);
+  const benched = candidates.filter((c) => c.status === "skipped");
+  const noKey = benched.filter((c) => /ANTHROPIC_API_KEY/i.test(skipReason(c))).length;
+  const noModal = benched.filter((c) => /modal/i.test(skipReason(c))).length;
+  const other = benched.length - noKey - noModal;
+  const why = [
+    noKey > 0 && `${need(noKey)} an Anthropic key`,
+    noModal > 0 && `${need(noModal)} Modal`,
+    other > 0 && `${other} for other reasons`,
+  ].filter(Boolean).join(", ");
+
   const winner = state.result ? state.candidates[state.result.winner] : null;
-  const m = winner?.metrics;
+  const m = state.result?.winner_metrics ?? winner?.metrics;
   const savings = state.result?.savings;
   const seconds = Math.round((parseTs(EVENTS[EVENTS.length - 1].ts) - parseTs(EVENTS[0].ts)) / 1000);
 
@@ -95,7 +113,13 @@ export function LiveLab() {
             <div className="border-b border-line-soft p-5 lg:border-b-0 lg:border-r">
               <StageRail stage={state.stage} />
               <div className="-mx-2 mt-6">
-                <Leaderboard candidates={Object.values(state.candidates)} target={state.spec?.target_accuracy} compact />
+                <Leaderboard candidates={candidates} target={state.spec?.target_accuracy} compact />
+                {benched.length > 0 && (
+                  <p className="mt-2 px-3 text-[11.5px] leading-snug text-ink/55">
+                    {benched.length} of {candidates.length} candidates were benched in this recording: {why}. The table
+                    shows the {candidates.length - benched.length} that ran.
+                  </p>
+                )}
               </div>
               <AnimatePresence>
                 {state.result && m && savings && (
@@ -108,14 +132,15 @@ export function LiveLab() {
                     <div className="mt-1.5 text-[20px] font-light tracking-[-0.02em]">{state.result.winner_name}</div>
                     <dl className="tnum mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
                       {[
-                        ["Held-out accuracy", pct(m.accuracy)],
-                        ["Cost / 1k calls", usd(m.cost_per_1k)],
-                        ["vs. frontier model", `${multiple(savings.multiple)} cheaper`],
-                        ["Latency p50", ms(m.latency_p50_ms)],
-                      ].map(([k, v]) => (
+                        ["Held-out accuracy", pct(m.accuracy), `on ${num(TEST_ROWS)} ${EVAL_KIND} rows`],
+                        ["Cost / 1k calls", usd(m.cost_per_1k), `frontier ${usd(savings.frontier_cost_per_1k)}${savings.frontier_measured ? "" : " est."}`],
+                        ["vs. frontier model", `${multiple(savings.multiple)} cheaper`, savings.frontier_measured ? "measured" : "est. from list price"],
+                        ["Latency p50", ms(m.latency_p50_ms), m.size_kb ? `model ${size(m.size_kb)}` : "measured on CPU"],
+                      ].map(([k, v, sub]) => (
                         <div key={k}>
-                          <dt className="text-[11.5px] text-white/45">{k}</dt>
+                          <dt className="text-[11.5px] text-white/60">{k}</dt>
                           <dd className="mt-1 text-[18px] font-light leading-none tracking-[-0.02em]">{v}</dd>
+                          <dd className="mt-1 text-[11px] text-white/60">{sub}</dd>
                         </div>
                       ))}
                     </dl>

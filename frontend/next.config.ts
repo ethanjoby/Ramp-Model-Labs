@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
   images: { remotePatterns: [{ protocol: "https", hostname: "*.googleusercontent.com" }] },
   turbopack: {
     rules: {

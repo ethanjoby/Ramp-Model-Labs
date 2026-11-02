@@ -97,7 +97,9 @@ class Cascade(Strategy):
             X, y = _xy(ctx.train)
             with Timer() as t:
                 pipe = Pipeline([("f", _features(len(X))), ("clf", LogisticRegression(C=4.0, max_iter=2000))]).fit(X, y)
-                rules = learn_rules(ctx.train)
+                real = [r for r in ctx.train if r.get("source") not in ("augmented", "user-upsampled")]
+                # Rules mined from augmented copies would count one real row several times; only real rows vote.
+                rules = learn_rules(real) if len(real) >= 40 else {}
                 threshold = _pick_threshold(pipe, ctx.dev, ctx.spec.target_accuracy)
             return pipe, rules, threshold, t.s
 
@@ -133,6 +135,7 @@ class Cascade(Strategy):
         path = os.path.join(ctx.artifact_dir, f"{self.key}.pkl")
         with open(path, "wb") as f:
             pickle.dump(cascade, f)
+        self._threshold = threshold
 
         routes = Counter(r["route"] for r in routed)
         n = max(1, len(routed))
@@ -142,9 +145,36 @@ class Cascade(Strategy):
             predictions=[r["label"] for r in routed], latencies_ms=lat, cost_per_1k=round(cost_1k, 7),
             train_cost=train_s * CPU_DOLLARS_PER_SEC, train_seconds=train_s,
             size_kb=round(os.path.getsize(path) / 1024, 1), artifact_path=path,
-            notes=(f"{len(rules)} rules, confidence floor {threshold:.0%}. Routed: "
+            notes=(f"{len(rules)} rules" + ("" if rules else " (too few real rows to mine any)") + f", confidence floor {threshold:.0%}. Routed: "
                    + ", ".join(f"{routes[k] / n:.0%} {k}" for k in ("rule", "model", "llm", "review") if routes[k])
                    + (". Rows sent to review are scored on the model's guess; reviewer time is not priced."
                       if routes["review"] else ".")),
             extra={"routes": {k: round(v / n, 4) for k, v in routes.items()}, "auto_accuracy": auto_acc},
         )
+
+    async def refit(self, ctx: LabContext, rows: list[dict], artifact_path: str) -> bool:
+        def go():
+            with open(artifact_path, "rb") as f:
+                old: CascadeModel = pickle.load(f)
+            X, y = _xy(rows)
+            pipe = Pipeline([("f", _features(len(X))), ("clf", LogisticRegression(C=4.0, max_iter=2000))]).fit(X, y)
+            real = [r for r in rows if r.get("source") not in ("augmented", "user-upsampled")]
+            rules = learn_rules(real) if len(real) >= 40 else {}
+            with open(artifact_path, "wb") as f:
+                pickle.dump(CascadeModel(rules, pipe, old.threshold, old.llm_system, old.llm_model, old.labels), f)
+            return True
+        return await asyncio.to_thread(go)
+
+    async def benchmark(self, ctx: LabContext, artifact_path: str) -> tuple[list[float], float] | None:
+        def go():
+            with open(artifact_path, "rb") as f:
+                cascade: CascadeModel = pickle.load(f)
+            texts = [r["text"] for r in ctx.test][:60] or ["warm up"]
+            cascade.route(texts[:2])
+            lat = []
+            for t in texts:
+                t0 = time.perf_counter()
+                cascade.route([t])
+                lat.append((time.perf_counter() - t0) * 1000)
+            return lat, round(sorted(lat)[len(lat) // 2] * CPU_DOLLARS_PER_SEC, 7)
+        return await asyncio.to_thread(go)

@@ -15,7 +15,12 @@ export default function ModelsPage() {
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
-    api<Deployment[]>("/api/deployments").then(setDeps).catch((e) => setErr(e.message));
+    const load = () => api<Deployment[]>("/api/deployments").then(setDeps).catch((e) => setErr(e.message));
+    load();
+    const onVisible = () => { if (document.visibilityState === "visible") load(); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => { document.removeEventListener("visibilitychange", onVisible); window.removeEventListener("focus", onVisible); };
   }, []);
 
   return (

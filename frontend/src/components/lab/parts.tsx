@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { Check, Crown, Minus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, FAMILY_LABEL, FamilyDot, Spinner } from "@/components/ui/bits";
-import { humanLabel, ms, multiple, pct, size, usd } from "@/lib/format";
+import { accuracyBasis, evalRows, humanLabel, ms, num, pct, savingsLabel, savingsTitle, size, usd } from "@/lib/format";
 import { EASE, EASE_OUT } from "@/lib/motion";
 import type { CandidateRow, Dataset, LabEvent, LabResult, Spec } from "@/lib/types";
 import { STAGES, type LabState } from "@/lib/useLab";
@@ -15,8 +15,10 @@ import { STAGES, type LabState } from "@/lib/useLab";
 export function StageRail({ stage, compact = false }: { stage: LabState["stage"]; compact?: boolean }) {
   const idx = stage === "done" ? STAGES.length : STAGES.findIndex((s) => s.key === stage);
   const failed = stage === "failed";
+  // The compact rail has no visible labels, so the progress it draws needs a spoken equivalent.
+  const progress = failed ? "failed" : stage === "done" ? "complete" : idx >= 0 ? `${STAGES[idx].label}, step ${idx + 1} of ${STAGES.length}` : "starting";
   return (
-    <ol className={clsx("flex items-center", compact ? "gap-1.5" : "gap-2")}>
+    <ol className={clsx("flex items-center", compact ? "gap-1.5" : "gap-2")} aria-label={compact ? `Build progress: ${progress}` : undefined}>
       {STAGES.map((s, i) => {
         const state = failed && i >= Math.max(idx, 0) ? "failed" : i < idx ? "done" : i === idx ? "active" : "todo";
         return (
@@ -117,19 +119,21 @@ export function sortCandidates(cands: CandidateRow[]) {
     (b.is_winner ? 1 : 0) - (a.is_winner ? 1 : 0) || rank(a) - rank(b) || (b.metrics.accuracy ?? 0) - (a.metrics.accuracy ?? 0));
 }
 
-export function Leaderboard({ candidates, target, onSelect, selected, compact = false }: {
+export function Leaderboard({ candidates, target, onSelect, selected, compact = false, evalSource, nEval }: {
   candidates: CandidateRow[]; target?: number; onSelect?: (k: string) => void; selected?: string | null; compact?: boolean;
+  evalSource?: string | null; nEval?: number | null;
 }) {
   const rows = sortCandidates(candidates).filter((c) => !compact || c.status !== "skipped");
   const accs = rows.map((r) => r.metrics.accuracy ?? 0).filter(Boolean);
   const lo = Math.max(0, Math.min(...accs, target ?? 1) - 0.08);
+  const basis = evalRows(evalSource, nEval);
   return (
     <div className="overflow-x-auto scroll-thin">
-      <table className="w-full min-w-[460px] text-left text-[13px]">
+      <table data-testid="leaderboard" className="w-full min-w-[460px] text-left text-[13px]">
         <thead>
           <tr className="text-[11.5px] text-muted">
             <th className="py-2 pl-3 font-normal">Candidate</th>
-            <th className="w-[34%] py-2 font-normal">Accuracy</th>
+            <th className="w-[34%] py-2 font-normal">Accuracy{basis && <span className="text-ink/45"> · {basis}</span>}</th>
             <th className="py-2 pl-5 text-right font-normal">p50</th>
             <th className="py-2 pl-5 pr-3 text-right font-normal">Cost / 1k</th>
           </tr>
@@ -139,25 +143,37 @@ export function Leaderboard({ candidates, target, onSelect, selected, compact = 
             {rows.map((c) => {
               const acc = c.metrics.accuracy;
               const w = acc != null ? Math.max(2, ((acc - lo) / (1 - lo)) * 100) : 0;
+              const selectable = c.status === "done" && !!onSelect;
+              const head = (
+                <>
+                  <span className="flex w-3.5 shrink-0 justify-center">{statusIcon(c)}</span>
+                  <FamilyDot family={c.family} />
+                  <span className={clsx("truncate", c.is_winner && "font-medium")}>{c.name}</span>
+                  {c.is_winner && <Badge tone="solar"><Crown className="h-3 w-3" />winner</Badge>}
+                  {c.family === "reference" && c.status === "done" && <Badge>yardstick</Badge>}
+                </>
+              );
               return (
                 <motion.tr
                   layout="position"
                   key={c.key}
                   transition={{ duration: 0.35, ease: EASE }}
-                  onClick={() => c.status === "done" && onSelect?.(c.key)}
+                  onClick={() => selectable && onSelect?.(c.key)}
                   className={clsx("border-t border-line-soft transition-colors",
-                    c.status === "done" && onSelect && "cursor-pointer hover:bg-paper/60",
+                    selectable && "cursor-pointer hover:bg-paper/60",
                     selected === c.key && "bg-paper/80",
                     c.status === "skipped" && "text-ink/40")}
                 >
                   <td className="py-2.5 pl-3">
-                    <div className="flex items-center gap-2.5">
-                      <span className="flex w-3.5 justify-center">{statusIcon(c)}</span>
-                      <FamilyDot family={c.family} />
-                      <span className={clsx("truncate", c.is_winner && "font-medium")}>{c.name}</span>
-                      {c.is_winner && <Badge tone="solar"><Crown className="h-3 w-3" />winner</Badge>}
-                      {c.family === "reference" && c.status === "done" && <Badge>yardstick</Badge>}
-                    </div>
+                    {selectable ? (
+                      // The row click is a convenience; the button is what keyboard and screen-reader users get.
+                      <button type="button" aria-pressed={selected === c.key} onClick={(e) => { e.stopPropagation(); onSelect?.(c.key); }}
+                        className="flex min-w-0 items-center gap-2.5 rounded-md text-left">
+                        {head}
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2.5">{head}</div>
+                    )}
                     {c.status === "skipped" && !compact && (
                       <div className="mt-0.5 pl-[46px] text-[11.5px] text-ink/40">{c.metrics.skip_reason ?? c.reason}</div>
                     )}
@@ -220,7 +236,7 @@ export function ParetoChart({ candidates, pareto, target }: { candidates: Candid
   const path = front.map((p, i) => `${i ? "L" : "M"}${geo.sx(p.metrics.cost_per_1k!)},${geo.sy(p.metrics.accuracy!)}`).join(" ");
   const sup = (n: number) => `10${n < 0 ? "⁻" : ""}${String(Math.abs(n)).split("").map((d) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[+d]).join("")}`;
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="img" aria-label="Accuracy versus cost for each candidate">
+    <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full" role="group" aria-label="Accuracy versus cost for each candidate">
       {geo.yt.map((y) => (
         <g key={y}>
           <line x1={P.l} x2={W - P.r} y1={geo.sy(y)} y2={geo.sy(y)} stroke="var(--line-soft)" />
@@ -244,9 +260,12 @@ export function ParetoChart({ candidates, pareto, target }: { candidates: Candid
       {pts.map((p) => {
         const x = geo.sx(p.metrics.cost_per_1k!), y = geo.sy(p.metrics.accuracy!);
         const fill = p.is_winner ? "var(--solar)" : p.family === "prompted" ? "var(--spring)" : p.family === "reference" ? "var(--muted)" : p.family === "finetuned" ? "var(--solar-deep)" : "var(--ink)";
+        const label = `${p.name}: ${pct(p.metrics.accuracy)} accuracy at ${usd(p.metrics.cost_per_1k)} per 1k calls${p.is_winner ? ", selected" : ""}`;
         return (
-          <g key={p.key} onMouseEnter={() => setHover(p.key)} onMouseLeave={() => setHover(null)} className="cursor-default">
+          <g key={p.key} tabIndex={0} role="img" aria-label={label} className="cursor-default outline-none"
+            onMouseEnter={() => setHover(p.key)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(p.key)} onBlur={() => setHover(null)}>
             {p.is_winner && <circle cx={x} cy={y} r={13} fill="var(--solar)" fillOpacity=".25" />}
+            {hover === p.key && <circle cx={x} cy={y} r={p.is_winner ? 11 : 9.5} fill="none" stroke="var(--ink)" strokeOpacity=".5" strokeWidth={1.5} />}
             <motion.circle cx={x} cy={y} r={p.is_winner ? 7 : 5.5} fill={fill} stroke={p.is_winner ? "var(--ink)" : "white"} strokeWidth={1.5}
               initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 300, damping: 20 }} />
             {(hover === p.key || p.is_winner) && (
@@ -266,9 +285,13 @@ export function ParetoChart({ candidates, pareto, target }: { candidates: Candid
 
 /* ------------------------------------------------------------- winner */
 
-export function WinnerCard({ result, spec, onOpen }: { result: LabResult; spec: Spec | null; onOpen?: () => void }) {
+export function WinnerCard({ result, spec, onOpen, evalSource, nEval }: {
+  result: LabResult; spec: Spec | null; onOpen?: () => void; evalSource?: string | null; nEval?: number | null;
+}) {
   const m = result.winner_metrics;
   const s = result.savings;
+  const published = result.meets_bar !== false;
+  const rows = evalRows(evalSource, nEval ?? m.n_eval);
   return (
     <motion.div
       initial={{ opacity: 0, y: 14, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.5, ease: EASE_OUT }}
@@ -278,7 +301,15 @@ export function WinnerCard({ result, spec, onOpen }: { result: LabResult; spec: 
         <div>
           <div className="flex items-center gap-2 text-[12px] text-solar"><Crown className="h-3.5 w-3.5" /> Selected model</div>
           <h3 className="mt-2 text-[24px] font-light tracking-[-0.025em]">{result.winner_name}</h3>
-          {spec && <p className="mt-1 text-[13px] text-white/50">{spec.name} · {spec.labels.length} labels</p>}
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-white/50">
+            {spec && <span>{spec.name} · {spec.labels.length} labels</span>}
+            {!published && (
+              <span className="rounded-full bg-danger/20 px-2 py-0.5 text-[11.5px] font-medium text-[#ffb08a]"
+                title={spec ? `Missed the bar the plan set: ≥ ${Math.round(spec.target_accuracy * 100)}% accuracy and ≤ ${spec.max_latency_ms}ms p50.` : undefined}>
+                Trained, not published
+              </span>
+            )}
+          </p>
         </div>
         {onOpen && (
           <button onClick={onOpen} className="rounded-full bg-solar px-4 py-2 text-[13px] font-medium text-ink transition-colors hover:bg-solar-light">
@@ -287,9 +318,9 @@ export function WinnerCard({ result, spec, onOpen }: { result: LabResult; spec: 
         )}
       </div>
       <div className="mt-7 grid grid-cols-2 gap-6 md:grid-cols-4">
-        <Big label="Held-out accuracy" value={pct(m.accuracy)} sub={`macro F1 ${m.macro_f1?.toFixed(3)}`} />
-        <Big label="Cost / 1k calls" value={usd(m.cost_per_1k)} sub={`frontier ${usd(s.frontier_cost_per_1k)}${s.frontier_measured ? "" : " est."}`} />
-        <Big label="Cheaper than frontier" value={multiple(s.multiple)} sub={`$${s.monthly_at_1m.frontier.toLocaleString()} → $${s.monthly_at_1m.winner.toLocaleString()} per 1M`} accent />
+        <Big label="Held-out accuracy" value={pct(m.accuracy)} sub={`${rows ? `on ${rows} · ` : ""}macro F1 ${m.macro_f1?.toFixed(3)}`} />
+        <Big label="Cost / 1k calls" value={usd(m.cost_per_1k)} sub={`frontier ${usd(s.frontier_cost_per_1k)}${s.frontier_measured ? "" : " est."}`} title={savingsTitle(s)} />
+        <Big label="Cheaper than frontier" value={savingsLabel(s)} sub={`${usd(s.monthly_at_1m.frontier)} → ${usd(s.monthly_at_1m.winner)} per 1M`} accent title={savingsTitle(s)} />
         <Big label="Latency p50" value={ms(m.latency_p50_ms)} sub={m.size_kb ? `model ${size(m.size_kb)}` : `p95 ${ms(m.latency_p95_ms)}`} />
       </div>
       <p className="mt-7 max-w-[760px] border-t border-white/10 pt-5 text-[14px] leading-relaxed text-white/75">{result.rationale}</p>
@@ -297,9 +328,9 @@ export function WinnerCard({ result, spec, onOpen }: { result: LabResult; spec: 
   );
 }
 
-function Big({ label, value, sub, accent }: { label: string; value: string; sub?: string; accent?: boolean }) {
+function Big({ label, value, sub, accent, title }: { label: string; value: string; sub?: string; accent?: boolean; title?: string }) {
   return (
-    <div>
+    <div title={title}>
       <div className="text-[11.5px] text-white/45">{label}</div>
       <div className={clsx("tnum mt-1.5 text-[30px] font-light leading-none tracking-[-0.03em]", accent && "text-solar")}>{value}</div>
       {sub && <div className="tnum mt-1.5 text-[11.5px] text-white/40">{sub}</div>}
@@ -318,13 +349,13 @@ export function DatasetPanel({ dataset, spec }: { dataset: Dataset; spec: Spec |
         {[["train", dataset.train], ["dev", dataset.dev], ["test", dataset.test]].map(([k, v]) => (
           <div key={k as string}>
             <div className="text-[11.5px] text-muted">{k}</div>
-            <div className="tnum text-[22px] font-light tracking-[-0.02em]">{(v as number).toLocaleString()}</div>
+            <div className="tnum text-[22px] font-light tracking-[-0.02em]">{num(v as number)}</div>
           </div>
         ))}
         <div>
           <div className="text-[11.5px] text-muted">sources</div>
           <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {Object.entries(dataset.sources).map(([k, v]) => <Badge key={k}>{k} · {v.toLocaleString()}</Badge>)}
+            {Object.entries(dataset.sources).map(([k, v]) => <Badge key={k}>{k} · {num(v)}</Badge>)}
           </div>
         </div>
       </div>

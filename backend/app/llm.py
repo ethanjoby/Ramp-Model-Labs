@@ -10,11 +10,20 @@ from .config import get_settings
 # $ per million tokens (input, output)
 PRICING = {
     "claude-haiku-4-5": (1.0, 5.0),
+    "claude-haiku-5-5": (0.10, 0.50),
     "claude-sonnet-5-5": (2.0, 10.0),
     "claude-opus-5-5": (4.0, 20.0),
 }
 
+# Default output caps per purpose. The 5.5 models think before they answer and thinking counts against
+# max_tokens, so a cap sized for the visible label alone returns nothing.
+MAX_TOKENS = {"classify": 512, "plan": 4096}
+
 _client = None
+
+
+class Refused(RuntimeError):
+    """The model declined the request (stop_reason "refusal"); there is no answer to parse."""
 
 
 def available() -> bool:
@@ -47,25 +56,62 @@ class Usage:
         self.cost += cost_of(model, u.input_tokens, u.output_tokens)
 
 
+def request_kwargs(model: str, purpose: str = "plan", max_tokens: int | None = None) -> dict[str, Any]:
+    """Shape a Messages request for the model it goes to.
+
+    Sampling parameters are rejected by the current API, so effort and thinking are the only cost/quality knobs.
+    Sonnet and Opus 5.5 cannot turn thinking off: low effort for classification, medium for planning and chat,
+    and a floor on max_tokens so the thinking does not eat the answer. Haiku 5.5 accepts thinking disabled at
+    effort high or below, which is the cheapest honest classifier. Anything else gets neither field: Haiku 4.5
+    rejects effort, and we do not know the rules for models we have not verified.
+    """
+    classify = purpose == "classify"
+    effort = "low" if classify else "medium"
+    floor = MAX_TOKENS["classify" if classify else "plan"]
+    kw: dict[str, Any] = {"max_tokens": max_tokens or floor}
+    if "haiku-5-5" in model:
+        kw["thinking"] = {"type": "disabled"}
+        kw["output_config"] = {"effort": effort}
+        kw["max_tokens"] = max(kw["max_tokens"], floor)
+    elif "sonnet-5-5" in model or "opus-5-5" in model:
+        kw["output_config"] = {"effort": effort}
+        kw["max_tokens"] = max(kw["max_tokens"], floor)
+    return kw
+
+
 async def complete(
     prompt: str,
     *,
     system: str = "",
     model: str | None = None,
-    max_tokens: int = 1024,
+    max_tokens: int | None = None,
+    purpose: str = "plan",
     usage: Usage | None = None,
     temperature: float | None = None,
 ) -> str:
+    """One user turn in, the text of the reply out. `purpose` is "classify" or "plan" (see request_kwargs).
+
+    `temperature` is accepted and ignored: the API rejects it now and one older call site still passes it.
+    """
     model = model or get_settings().fast_model
-    kwargs: dict[str, Any] = dict(model=model, max_tokens=max_tokens, messages=[{"role": "user", "content": prompt}])
+    kwargs: dict[str, Any] = dict(model=model, messages=[{"role": "user", "content": prompt}],
+                                  **request_kwargs(model, purpose, max_tokens))
     if system:
         kwargs["system"] = system
-    if temperature is not None and "haiku" in model:
-        kwargs["temperature"] = temperature
-    resp = await client().messages.create(**kwargs)
-    if usage:
-        usage.add(model, resp.usage)
-    return "".join(b.text for b in resp.content if b.type == "text")
+    text = ""
+    for attempt in range(2):
+        resp = await client().messages.create(**kwargs)
+        if usage:
+            usage.add(model, resp.usage)
+        if resp.stop_reason == "refusal":
+            details = getattr(resp, "stop_details", None)
+            why = getattr(details, "explanation", None) or getattr(details, "category", None) or "no reason given"
+            raise Refused(f"{model} declined the request: {why}")
+        text = "".join(b.text for b in resp.content if b.type == "text")
+        if resp.stop_reason != "max_tokens":
+            break
+        kwargs["max_tokens"] *= 2  # cut off mid-answer: one retry with room to finish
+    return text
 
 
 def extract_json(text: str) -> Any:

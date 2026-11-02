@@ -17,13 +17,17 @@ export async function api<T = unknown>(path: string, init: RequestInit & { json?
   const res = await fetch(path, {
     credentials: "same-origin",
     ...rest,
-    headers: { ...(json !== undefined ? { "Content-Type": "application/json" } : {}), ...headers },
+    // The custom header is the CSRF token: no cross-site page can send it without a preflight we never grant.
+    headers: { "X-Requested-With": "rml", ...(json !== undefined ? { "Content-Type": "application/json" } : {}), ...headers },
     body: json !== undefined ? JSON.stringify(json) : rest.body,
   });
   const text = await res.text();
   const body = text ? (() => { try { return JSON.parse(text); } catch { return text; } })() : null;
   if (res.status === 401 && typeof window !== "undefined" && window.location.pathname.startsWith("/app")) {
-    window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+    const next = window.location.pathname + window.location.search;
+    window.location.assign(new URL(`/login?next=${encodeURIComponent(next)}`, window.location.origin).href);
+    // The page is on its way to the login screen; settling this promise would only flash an error first.
+    return new Promise<T>(() => {});
   }
   if (!res.ok) throw new ApiError(res.status, detail(body));
   return body as T;

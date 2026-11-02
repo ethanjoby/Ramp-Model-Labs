@@ -5,14 +5,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { Boxes, FlaskConical, KeyRound, LogOut, Menu, MessageSquare, Plus, Settings, X } from "lucide-react";
-import { createContext, Suspense, useContext, useEffect, useState } from "react";
+import { Boxes, FlaskConical, KeyRound, LogOut, Menu, MessageSquare, Plus, Settings, Workflow, X } from "lucide-react";
+import { createContext, Suspense, useContext, useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/ui/Logo";
 import { api } from "@/lib/api";
 import type { User } from "@/lib/types";
 import { EASE_OUT } from "@/lib/motion";
 
-type Caps = { llm: boolean; modal: boolean };
+type Caps = { llm: boolean; modal: boolean; local_lm?: boolean };
 const Ctx = createContext<{ user: User | null; caps: Caps | null }>({ user: null, caps: null });
 export const useSession = () => useContext(Ctx);
 
@@ -20,6 +20,7 @@ const NAV = [
   { href: "/app", label: "Copilot", icon: MessageSquare, exact: true },
   { href: "/app/labs", label: "Labs", icon: FlaskConical },
   { href: "/app/models", label: "Models", icon: Boxes },
+  { href: "/app/workflows", label: "Workflows", icon: Workflow },
   { href: "/app/keys", label: "API keys", icon: KeyRound },
   { href: "/app/settings", label: "Settings", icon: Settings },
 ];
@@ -52,6 +53,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [caps, setCaps] = useState<Caps | null>(null);
   const [open, setOpen] = useState(false);
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  // The drawer is a dialog: it takes focus, closes on Escape and the page behind it does not scroll.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
+  }, [open]);
 
   useEffect(() => {
     api<User>("/api/auth/me").then(setUser).catch(() => {});
@@ -79,6 +92,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <div className="rounded-xl border border-line-soft bg-white/60 p-3 text-[11.5px] leading-relaxed text-muted">
             <div className="mb-1.5 font-medium text-ink/80">Engines</div>
             <div className="flex items-center justify-between"><span>Local specialists</span><span className="text-smolder">on</span></div>
+            <div className="flex items-center justify-between"><span>Local LM fine-tune</span><span className={caps.local_lm ? "text-smolder" : "text-ink/35"}>{caps.local_lm ? "on" : "off"}</span></div>
             <div className="flex items-center justify-between"><span>Claude agents</span><span className={caps.llm ? "text-smolder" : "text-ink/35"}>{caps.llm ? "on" : "off"}</span></div>
             <div className="flex items-center justify-between"><span>Modal GPU fine-tune</span><span className={caps.modal ? "text-smolder" : "text-ink/35"}>{caps.modal ? "on" : "off"}</span></div>
           </div>
@@ -109,16 +123,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <aside className="fixed inset-y-0 left-0 hidden w-[236px] border-r border-line-soft bg-paper md:block">{side}</aside>
         <div className="sticky top-0 z-30 flex items-center justify-between border-b border-line-soft bg-paper/90 px-4 py-3 backdrop-blur md:hidden">
           <Logo />
-          <button onClick={() => setOpen(true)} aria-label="Open menu" className="rounded-md p-1.5"><Menu className="h-5 w-5" /></button>
+          <button onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open} aria-controls="mobile-nav" className="rounded-md p-1.5"><Menu className="h-5 w-5" /></button>
         </div>
         <AnimatePresence>
           {open && (
             <>
               <motion.div className="fixed inset-0 z-40 bg-ink/30 md:hidden" onClick={() => setOpen(false)}
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
-              <motion.aside className="fixed inset-y-0 left-0 z-50 w-[260px] bg-paper md:hidden"
+              <motion.aside id="mobile-nav" role="dialog" aria-modal="true" aria-label="Navigation" className="fixed inset-y-0 left-0 z-50 w-[260px] bg-paper md:hidden"
                 initial={{ x: -280 }} animate={{ x: 0, transition: { duration: 0.3, ease: EASE_OUT } }} exit={{ x: -280, transition: { duration: 0.2 } }}>
-                <button onClick={() => setOpen(false)} aria-label="Close menu" className="absolute right-3 top-4 rounded-md p-1.5"><X className="h-4 w-4" /></button>
+                <button ref={closeRef} onClick={() => setOpen(false)} aria-label="Close menu" className="absolute right-3 top-4 rounded-md p-1.5"><X className="h-4 w-4" /></button>
                 {side}
               </motion.aside>
             </>

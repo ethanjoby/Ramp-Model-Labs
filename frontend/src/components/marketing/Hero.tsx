@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion, useScroll, useTransform } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { ArrowRight, CornerDownLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/ui/Logo";
@@ -25,17 +25,20 @@ export function Hero() {
   const [value, setValue] = useState("");
   const [ex, setEx] = useState(0);
   const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const reduced = useReducedMotion();
 
   // The copy hands over to the next section as the cloud collapses behind it.
   const { scrollYProgress } = useScroll({ target: section, offset: ["start start", "end start"] });
   const opacity = useTransform(scrollYProgress, [0, 0.55], [1, 0]);
   const y = useTransform(scrollYProgress, [0, 0.55], [0, -56]);
 
+  // The example is a suggestion, not a slideshow: it holds still while someone reads it, types, or asked for less motion.
   useEffect(() => {
-    if (focused || value) return;
+    if (focused || hovered || value || reduced) return;
     const id = setInterval(() => setEx((i) => (i + 1) % EXAMPLES.length), 3800);
     return () => clearInterval(id);
-  }, [focused, value]);
+  }, [focused, hovered, value, reduced]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,26 +66,22 @@ export function Hero() {
         </div>
       </header>
 
+      {/* The entrance is CSS (.rise), so the server HTML is readable before hydration and without JS. */}
       <motion.div style={{ opacity, y }} className="mx-auto flex min-h-[calc(100svh-84px)] max-w-[1240px] flex-col justify-start px-5 pb-[38vh] pt-6 md:justify-center md:px-8 md:pb-24 md:pt-0">
-        <motion.h1
-          initial={{ opacity: 0, y: 28 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: EASE_OUT }}
-          className="display max-w-[11ch] text-[clamp(50px,8.6vw,124px)]"
-        >
+        <h1 className="rise display max-w-[11ch] text-[clamp(50px,8.6vw,124px)] [--rise-y:28px] [animation-duration:0.8s]">
           One prompt in. A specialist model out.
-        </motion.h1>
-        <motion.p
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.12 }}
-          className="mt-7 max-w-[560px] text-[17px] leading-relaxed text-white/70"
-        >
+        </h1>
+        <p className="rise mt-7 max-w-[560px] text-[17px] leading-relaxed text-white/70 [animation-delay:120ms]">
           Describe a financial workflow in plain English. A team of agents writes the spec, builds the data,
           trains and fine-tunes competing models, scores every one on held-out examples, and ships the cheapest
           that clears your bar.
-        </motion.p>
+        </p>
 
-        <motion.form
+        <form
           onSubmit={submit}
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE_OUT, delay: 0.22 }}
-          className="mt-10 flex w-full max-w-[660px] items-center gap-2 rounded-2xl bg-white p-2 pl-5 text-ink shadow-[0_24px_80px_-24px_rgba(0,0,0,0.6)] transition-shadow focus-within:shadow-[0_0_0_3px_rgba(228,242,34,0.9),0_24px_80px_-24px_rgba(0,0,0,0.6)]"
+          onPointerEnter={() => setHovered(true)}
+          onPointerLeave={() => setHovered(false)}
+          className="rise mt-10 flex w-full max-w-[660px] items-center gap-2 rounded-2xl bg-white p-2 pl-5 text-ink shadow-[0_24px_80px_-24px_rgba(0,0,0,0.6)] transition-shadow focus-within:shadow-[0_0_0_3px_rgba(228,242,34,0.9),0_24px_80px_-24px_rgba(0,0,0,0.6)] [animation-delay:220ms]"
         >
           <div className="relative min-w-0 flex-1">
             <input
@@ -95,13 +94,13 @@ export function Hero() {
               placeholder="Describe the model you need"
             />
             {!value && (
-              <div className="pointer-events-none absolute inset-0 flex items-center overflow-hidden">
-                <AnimatePresence mode="wait">
+              <div data-testid="hero-example" className="pointer-events-none absolute inset-0 flex items-center overflow-hidden">
+                <AnimatePresence mode="wait" initial={false}>
                   <motion.span
                     key={ex}
                     initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.3, ease: EASE_OUT }}
-                    className="truncate text-[15px] text-ink/45"
+                    className="truncate text-[15px] text-ink/55"
                   >
                     {EXAMPLES[ex]}
                   </motion.span>
@@ -115,16 +114,13 @@ export function Hero() {
           >
             Build it <CornerDownLeft className="h-4 w-4" />
           </button>
-        </motion.form>
-        <motion.p
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-4 hidden items-center gap-2 text-[13px] text-white/50 md:flex"
-        >
+        </form>
+        <p className="rise mt-4 hidden items-center gap-2 text-[13px] text-white/60 md:flex [animation-delay:400ms]">
           Press enter to try the example, or
           <a href="#demo" className="inline-flex items-center gap-1 text-white/80 underline-offset-4 hover:text-white hover:underline">
             watch a recorded run <ArrowRight className="h-3.5 w-3.5" />
           </a>
-        </motion.p>
+        </p>
       </motion.div>
     </section>
   );

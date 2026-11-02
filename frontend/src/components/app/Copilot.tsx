@@ -11,10 +11,11 @@ import { Badge, Spinner } from "@/components/ui/bits";
 import { StageRail } from "@/components/lab/parts";
 import { useSession } from "@/components/app/Shell";
 import { api } from "@/lib/api";
-import { humanLabel, multiple, pct, usd } from "@/lib/format";
+import { accuracyBasis, humanLabel, pct, savingsLabel, savingsTitle, usd } from "@/lib/format";
 import { EASE_OUT } from "@/lib/motion";
 import type { ChatAction, ChatMsg } from "@/lib/types";
 import { useLab } from "@/lib/useLab";
+import { useWorkflow } from "@/lib/useWorkflow";
 
 const DistillScene = dynamic(() => import("@/components/three/DistillScene"), { ssr: false });
 
@@ -38,7 +39,7 @@ function LabCard({ labId }: { labId: string }) {
         <span className="truncate text-[13.5px] font-medium">{spec?.name ?? lab?.name ?? "New lab"}</span>
         <span className="flex shrink-0 items-center gap-1.5 text-[12px] text-muted">
           {live && <Spinner className="h-3 w-3" />}
-          {stage === "done" ? "Deployed" : stage === "failed" ? "Failed" : "Building"}
+          {stage === "done" ? (result?.meets_bar === false ? "Trained, not published" : "Deployed") : stage === "failed" ? "Failed" : "Building"}
           <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
         </span>
       </div>
@@ -47,17 +48,45 @@ function LabCard({ labId }: { labId: string }) {
       {result && m && (
         <div className="tnum mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[12.5px] text-ink/70">
           <span className="font-medium text-ink">{result.winner_name}</span>
-          <span>{pct(m.accuracy)} accuracy</span>
+          <span>{accuracyBasis(m.accuracy, lab?.eval_source, m.n_eval)}</span>
           <span>{usd(m.cost_per_1k)} / 1k</span>
-          <span>{multiple(result.savings?.multiple)} cheaper than frontier</span>
+          <span title={savingsTitle(result.savings)}>{savingsLabel(result.savings)} cheaper than frontier</span>
         </div>
       )}
     </Link>
   );
 }
 
+function WorkflowCard({ id }: { id: string }) {
+  const { wf, live } = useWorkflow(id);
+  const s = wf?.summary ?? {};
+  return (
+    <Link href={`/app/workflows/${id}`}
+      className="group mt-3 block rounded-xl border border-line-soft bg-white p-4 transition-colors hover:border-ink/30">
+      <div className="flex items-center justify-between gap-3">
+        <span className="truncate text-[13.5px] font-medium">{wf?.name ?? "Workflow"}</span>
+        <span className="flex shrink-0 items-center gap-1.5 text-[12px] text-muted">
+          {live && <Spinner className="h-3 w-3" />}
+          {wf?.status === "completed" ? "Done" : wf?.status === "failed" ? "Failed" : wf?.status === "building" ? "Building a model" : "Running"}
+          <ArrowUpRight className="h-3.5 w-3.5 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+        </span>
+      </div>
+      {wf && (
+        <div className="tnum mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[12.5px] text-ink/70">
+          <span>{wf.rows_done}/{wf.rows_total} rows</span>
+          {wf.deployment && <span className="font-medium text-ink">{wf.deployment.name}</span>}
+          {wf.status === "completed" && <span>{s.review ?? 0} for review</span>}
+          {s.accuracy_on_labeled != null && <span>{pct(s.accuracy_on_labeled)} on your labels</span>}
+        </div>
+      )}
+      {wf?.error && <p className="mt-2 text-[12.5px] text-danger">{wf.error}</p>}
+    </Link>
+  );
+}
+
 function ActionView({ action }: { action: ChatAction }) {
   if (action.type === "lab_started" || action.type === "lab_ref") return <LabCard labId={action.lab_id} />;
+  if (action.type === "workflow_started") return <WorkflowCard id={action.workflow_id} />;
   if (action.type === "prediction") {
     return (
       <div className="mt-3 overflow-hidden rounded-xl border border-line-soft bg-white">
@@ -86,7 +115,7 @@ function ActionView({ action }: { action: ChatAction }) {
           <li key={m.slug}>
             <Link href={`/app/models/${m.slug}`} className="flex items-center justify-between gap-4 px-3.5 py-2.5 text-[13px] hover:bg-paper/60">
               <span className="min-w-0 truncate">{m.name}</span>
-              <span className="tnum shrink-0 font-mono text-[12px] text-muted">{pct(m.accuracy)} · {usd(m.cost_per_1k)}</span>
+              <span className="tnum shrink-0 font-mono text-[12px] text-muted">{accuracyBasis(m.accuracy, m.eval_source, m.n_eval)} · {usd(m.cost_per_1k)}</span>
             </Link>
           </li>
         ))}

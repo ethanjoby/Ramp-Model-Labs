@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 import re
 import time
 
@@ -14,6 +15,15 @@ from .config import get_settings
 
 CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
 _certs: dict = {"keys": {}, "expires": 0.0}
+log = logging.getLogger("rml.firebase")
+
+
+def log_startup() -> None:
+    """Called once from the app lifespan: an unsigned-token mode must never go unnoticed in a server log."""
+    s = get_settings()
+    if s.firebase_auth_emulator_host:
+        log.warning("FIREBASE_AUTH_EMULATOR_HOST=%s: ID-token signatures are not verified. Never set this in production.",
+                    s.firebase_auth_emulator_host)
 
 
 @dataclass
@@ -29,10 +39,21 @@ class Identity:
 async def _public_keys(force: bool = False) -> dict[str, object]:
     if not force and _certs["keys"] and time.time() < _certs["expires"]:
         return _certs["keys"]
-    async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.get(CERTS_URL)
-        r.raise_for_status()
-    keys = {kid: x509.load_pem_x509_certificate(pem.encode()).public_key() for kid, pem in r.json().items()}
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(CERTS_URL)
+            r.raise_for_status()
+        keys = {kid: x509.load_pem_x509_certificate(pem.encode()).public_key() for kid, pem in r.json().items()}
+        if not keys:
+            raise ValueError("empty certificate set")
+    except Exception as e:  # network, HTTP status, JSON and PEM failures all land here
+        # Google rotates these certs slowly, so a stale set is far better than failing every sign-in
+        # over one bad fetch; with nothing cached there is honestly no way to verify anyone.
+        if _certs["keys"]:
+            log.warning("Google cert refresh failed (%s); using the cached keys", e.__class__.__name__)
+            return _certs["keys"]
+        log.error("Google cert fetch failed with nothing cached: %s", e)
+        raise HTTPException(503, "Sign-in is temporarily unavailable")
     m = re.search(r"max-age=(\d+)", r.headers.get("cache-control", ""))
     _certs.update(keys=keys, expires=time.time() + (int(m.group(1)) if m else 3600))
     return keys

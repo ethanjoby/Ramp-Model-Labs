@@ -2,6 +2,7 @@ from ..config import get_settings
 from .base import Strategy
 from .cascade import Cascade
 from .classical import LinearSpecialist, NaiveBayes, SvmSpecialist, TinyNeural
+from .encoder import EncoderFinetune
 from .finetuned import LoraFinetune
 from .prompted import OptimizedFewShot, ZeroShot
 
@@ -10,6 +11,7 @@ def strategies() -> list[Strategy]:
     s = get_settings()
     return [
         NaiveBayes(), LinearSpecialist(), SvmSpecialist(), TinyNeural(), Cascade(),
+        EncoderFinetune(),
         ZeroShot(s.fast_model, "zero_shot_haiku", "Claude Haiku 4.5 · zero-shot"),
         OptimizedFewShot(),
         LoraFinetune(),

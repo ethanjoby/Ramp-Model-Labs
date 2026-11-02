@@ -1,8 +1,10 @@
 """Load a deployed winner and serve predictions, whatever family it came from."""
 from __future__ import annotations
 
+import asyncio
 import json
 import math
+import os
 import pickle
 import time
 
@@ -17,7 +19,9 @@ def _load(c: Candidate):
         path = c.artifact_path
         if not path:
             raise ValueError("This model has no deployable artifact.")
-        if path.endswith(".pkl"):
+        if os.path.isdir(path):  # a fine-tuned transformer saved with save_pretrained
+            _cache[c.id] = ("encoder", path)
+        elif path.endswith(".pkl"):
             with open(path, "rb") as f:
                 _cache[c.id] = ("sk", pickle.load(f))  # artifacts are written only by our trainers
         else:
@@ -30,7 +34,11 @@ async def predict(c: Candidate, texts: list[str]) -> tuple[list[dict], float]:
     kind, obj = _load(c)
     t0 = time.perf_counter()
     out: list[dict] = []
-    if kind == "sk" and hasattr(obj, "route"):
+    if kind == "encoder":
+        from .trainers.encoder import predict_encoder
+
+        out = await asyncio.to_thread(predict_encoder, obj, texts)
+    elif kind == "sk" and hasattr(obj, "route"):
         from .trainers.prompted import classify_one
 
         out = obj.route(texts)
@@ -77,3 +85,8 @@ async def predict(c: Candidate, texts: list[str]) -> tuple[list[dict], float]:
             out.append({"label": await classify_one(obj["system"], t, obj["labels"], obj["model"]),
                         "confidence": None, "top": None})
     return out, (time.perf_counter() - t0) * 1000
+
+
+def evict(candidate_id: str) -> None:
+    """Drop a deleted or retrained candidate's model from memory."""
+    _cache.pop(candidate_id, None)

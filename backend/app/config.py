@@ -33,7 +33,11 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str = ""
     agent_model: str = "claude-sonnet-5-5"
-    fast_model: str = "claude-haiku-4-5"
+    fast_model: str = "claude-haiku-5-5"
+    # X-Forwarded-For is trusted only when the connection comes from one of these (the Next.js proxy runs locally).
+    trusted_proxies: str = "127.0.0.1,::1"
+
+    local_lm_model: str = "sentence-transformers/all-MiniLM-L6-v2"  # fine-tuned locally when torch is installed
 
     modal_enabled: bool = False  # set true after `modal token new` + `modal deploy modal_app.py`
     modal_app_name: str = "ramp-model-labs"

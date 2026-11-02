@@ -40,6 +40,7 @@ Everything works with no other keys: the procedural data engine and the local sp
 
 | Key | Unlocks |
 | --- | --- |
+| `torch` + `transformers` (installed by `uv sync`) | The local MiniLM fine-tune; without them the candidate is listed as skipped |
 | `ANTHROPIC_API_KEY` | Planner for open-ended tasks, synthetic data, prompted candidates (zero-shot Haiku, optimized few-shot program), the frontier reference, the cascade's LLM level, the copilot's natural-language tool use |
 | Modal (`uv run modal token new && uv run modal deploy modal_app.py`, then `MODAL_ENABLED=true`) | LoRA fine-tune of Qwen2.5-0.5B on an L4 GPU, plus serving for deployed adapters |
 
@@ -49,6 +50,7 @@ Everything works with no other keys: the procedural data engine and the local sp
 2. **Curator** builds the dataset. Real examples are reserved for evaluation first, then the procedural generators and Claude fill in training data across several styles. Small uploads get label-preserving variants of their training rows (never of test or dev rows). Near-duplicates are dropped, splits are stratified.
 3. **Trainer** runs every available strategy in parallel against the same splits:
    - local specialists: Naive Bayes, tuned linear, SVM, tiny neural net
+   - a real language model, fine-tuned locally: MiniLM-L6 (22M parameters) with a new classification head, trained end to end on the lab's split on Apple-silicon GPU or CPU in roughly 10-20 s, evaluated and served on CPU (about 7 ms a call)
    - cascade: learned rules → small model → LLM → human review
    - prompted: zero-shot Haiku, optimized few-shot prompt program
    - fine-tuned: LoRA on Modal
@@ -58,6 +60,17 @@ Everything works with no other keys: the procedural data engine and the local sp
 
 The homepage replays one real run from its stored events (`frontend/src/components/marketing/demo-lab.json`), through the same reducer the product uses.
 
+## Workflows: a file in, decisions out
+
+A workflow takes what a finance team actually has and runs it through the best model:
+
+- **Inputs**: `.xlsx`/`.csv`/`.tsv` (text and label columns are inferred from headers, then from the shape of the data; an amount column is appended to the text), `.eml` or pasted email text (newest message only, quoted threads dropped, CSV/XLSX attachments parsed), PDFs (one row for short documents, one row per line for statements), JSON/JSONL and plain text. Parsing is pure Python and read-only: no formulas, macros or network.
+- **Model choice**: a model you name, else the live model whose task best matches your prompt and the labels in the file, else a new lab is built on the spot when the file is labeled or the prompt matches a built-in workflow.
+- **Run**: every row is classified in batches; rows under the confidence floor, or routed to review by the cascade, land in a review queue. A person's decision is saved as feedback for the model's next retrain.
+- **Outputs**: a summary (distribution, automatic vs review, mean confidence, measured cost against the frontier estimate, accuracy on any labeled rows in the file), an Excel or CSV export with the original columns plus `prediction`, `confidence`, `needs_review`, `runner_up`, and a live activity stream.
+
+API: `POST /api/workflows` (multipart `file` or `text`, optional `prompt`, `deployment`, `confidence_floor`), `GET /api/workflows/{id}`, `/rows?review=true`, `POST /rows/{row_id}/review`, `GET /export?format=xlsx|csv`, `GET /events` (SSE).
+
 ## Where the ideas came from
 
 - `mshumer/gpt-llm-trainer`: describe the task, synthesize pairs, fine-tune a small model. That is the curator plus the LoRA trainer; the held-out evaluation on real examples is the defense against synthetic blind spots.
@@ -66,6 +79,16 @@ The homepage replays one real run from its stored events (`frontend/src/componen
 - BARRED: synthetic data from a task description plus a few examples.
 - `drake69/spendif-ai`: the rules → model → LLM → review cascade.
 - `lottiefiles/motion-design-skill` and `AThevon/genjutsu`: one motion personality (corporate: 200/300/450 ms, one easing family), reduced-motion support, the three.js rules the hero follows (shader-driven particles, selective bloom, no per-frame allocation, render only while visible), and the "tells" checklist the marketing page was audited against.
+
+## Tests
+
+```bash
+scripts/test-all.sh        # backend pytest, frontend lint + types, Playwright end-to-end
+cd backend && uv run pytest
+cd frontend && pnpm test:e2e   # starts the Auth emulator, a fresh backend and a production build by itself
+```
+
+CI runs the same three jobs on every push (`.github/workflows/ci.yml`). The end-to-end suite signs in through the real Google button against the Firebase Auth emulator, builds a model from a starter prompt and from an uploaded CSV, exercises the playground, API keys and sign-out.
 
 ## Security
 

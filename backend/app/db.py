@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 import uuid
 
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Column, event
 from sqlmodel import Field, Session, SQLModel, create_engine
 
 from .config import get_settings
@@ -109,8 +109,18 @@ class ChatMessage(SQLModel, table=True):
 
 
 engine = create_engine(
-    get_settings().database_url, connect_args={"check_same_thread": False}
+    get_settings().database_url, connect_args={"check_same_thread": False, "timeout": 5}
 )
+
+
+@event.listens_for(engine, "connect")
+def _sqlite_pragmas(dbapi_conn, _record):
+    # Readers (SSE replays, the UI polling) must not block the orchestrator's writes, and a busy file is a wait, not an error.
+    cur = dbapi_conn.cursor()
+    cur.execute("PRAGMA journal_mode=WAL")
+    cur.execute("PRAGMA synchronous=NORMAL")
+    cur.execute("PRAGMA busy_timeout=5000")
+    cur.close()
 
 
 def init_db() -> None:

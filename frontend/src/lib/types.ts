@@ -71,9 +71,18 @@ export type LabResult = {
   savings: Savings;
   deployment: { slug: string; id: string };
   agent_spend: number;
+  meets_bar?: boolean;
 };
 
-export type Lab = {
+/** Where the held-out score came from; the backend sends these on labs and deployments. */
+export type EvalBasis = {
+  eval_source?: string | null;
+  n_eval?: number | null;
+  frontier_measured?: boolean | null;
+  meets_bar?: boolean | null;
+};
+
+export type Lab = EvalBasis & {
   id: string;
   name: string;
   prompt: string;
@@ -99,11 +108,11 @@ export type LabEvent = {
   ts: string;
 };
 
-export type Deployment = {
+export type Deployment = EvalBasis & {
   id: string;
   slug: string;
   name: string;
-  status: string;
+  status: "live" | "draft";
   lab_id: string;
   created_at: string;
   requests: number;
@@ -114,6 +123,10 @@ export type Deployment = {
   labels: string[];
   savings: Savings | null;
   feedback_count: number;
+  input_description?: string | null;
+  samples?: string[];
+  target_accuracy?: number | null;
+  max_latency_ms?: number | null;
 };
 
 export type Prediction = { label: string; confidence: number | null; top: { label: string; p: number }[] | null; route?: "rule" | "model" | "llm" | "review" };
@@ -121,8 +134,9 @@ export type Prediction = { label: string; confidence: number | null; top: { labe
 export type ChatAction =
   | { type: "lab_started"; lab_id: string; prompt: string }
   | { type: "lab_ref"; lab_id: string }
+  | { type: "workflow_started"; workflow_id: string; name: string; rows: number }
   | { type: "prediction"; slug: string; name: string; rows: ({ input: string } & Prediction)[]; latency_ms: number }
-  | { type: "models"; models: { slug: string; name: string; model: string; accuracy: number; cost_per_1k: number }[] };
+  | { type: "models"; models: ({ slug: string; name: string; model: string; accuracy: number; cost_per_1k: number } & EvalBasis)[] };
 
 export type ChatMsg = { role: "user" | "assistant"; content: string; actions?: ChatAction[]; ts?: string; pending?: boolean };
 

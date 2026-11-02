@@ -1,15 +1,21 @@
 "use client";
 
+import { PerformanceMonitor } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
-import { Suspense, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { Component, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import * as THREE from "three";
+import { Mark } from "@/components/ui/Logo";
 
 /*
  * A big, diffuse cloud (the general-purpose model) continuously distills into a small, dense,
  * bright core (the specialist). Every particle's path lives in the vertex shader, so the CPU only
  * advances uniforms. Scrolling the hero collapses the whole cloud into the core, which is the one
  * thing in the scene bright enough to bloom.
+ *
+ * Without WebGL, or once the context is lost, the same ground is drawn as a still: ink, a soft
+ * highlight where the core would sit, and the mark. A machine that can't hold 40 fps keeps the
+ * scene but drops to dpr 1 without bloom.
  */
 
 type Controls = { collapse: number; pointerX: number; pointerY: number };
@@ -97,6 +103,7 @@ function buildGeometry(count: number) {
 function Particles({ count, reduced, controls }: { count: number; reduced: boolean; controls: RefObject<Controls> }) {
   const mat = useRef<THREE.ShaderMaterial>(null);
   const gl = useThree((s) => s.gl);
+  const dpr = useThree((s) => s.viewport.dpr);
   const geometry = useMemo(() => buildGeometry(count), [count]);
   const uniforms = useMemo(
     () => ({
@@ -117,6 +124,7 @@ function Particles({ count, reduced, controls }: { count: number; reduced: boole
     const u = mat.current?.uniforms;
     if (!u) return;
     const d = Math.min(delta, 0.05);
+    u.uPixel.value = Math.min(dpr, 2);  // point size is in device pixels; follows the monitor when it steps dpr down
     u.uTime.value += d;
     u.uCollapse.value += (controls.current.collapse - u.uCollapse.value) * (1 - Math.exp(-d * 6));
   });
@@ -188,6 +196,44 @@ function Rig({ children, controls, offset, offsetMobile, interactive }: {
   return <group ref={ref} position={pos}>{children}</group>;
 }
 
+// The probe context is released at once so it never competes with the real canvas for a GPU slot.
+function hasWebGL(): boolean {
+  if (typeof document === "undefined") return false;
+  try {
+    const probe = document.createElement("canvas");
+    const gl = probe.getContext("webgl2") ?? probe.getContext("webgl");
+    if (!gl) return false;
+    gl.getExtension("WEBGL_lose_context")?.loseContext();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Renderer construction can still throw after a passing probe (blocked GPU, exhausted contexts); that lands here.
+class SceneBoundary extends Component<{ onError: () => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch() {
+    this.props.onError();
+  }
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
+
+function Fallback() {
+  const spot = "absolute left-1/2 top-[70%] -translate-x-1/2 -translate-y-1/2 md:left-[68%] md:top-1/2";
+  return (
+    <div data-testid="scene-fallback" className="absolute inset-0 overflow-hidden bg-ink">
+      <div className={`${spot} h-[80vmin] w-[80vmin] rounded-full bg-[radial-gradient(closest-side,rgba(228,242,34,0.14),rgba(228,242,34,0.03)_55%,transparent_100%)]`} />
+      <Mark className={`${spot} h-[18vmin] w-[18vmin] text-white/35`} strokeWidth={1.1} />
+    </div>
+  );
+}
+
 export default function DistillScene({
   density = 1, className, offset = [0, 0, 0], offsetMobile = offset, collapseOnScroll = false, interactive = true, bloom = true,
 }: {
@@ -198,6 +244,8 @@ export default function DistillScene({
   const controls = useRef<Controls>({ collapse: 0, pointerX: 0, pointerY: 0 });
   const host = useRef<HTMLDivElement>(null);
   const [onScreen, setOnScreen] = useState(true);
+  const [webgl, setWebgl] = useState(hasWebGL);
+  const [degraded, setDegraded] = useState(false);
 
   // Render only while visible: a hero that scrolled away shouldn't keep the GPU busy.
   useEffect(() => {
@@ -220,21 +268,33 @@ export default function DistillScene({
 
   return (
     <div ref={host} className={className} aria-hidden>
-      <Canvas frameloop={onScreen ? "always" : "never"} dpr={[1, 1.75]} camera={{ position: [0, 0.15, 7.6], fov: 40 }}
-        gl={{ antialias: false, alpha: false, powerPreference: "high-performance" }}>
-        <color attach="background" args={["#0c0a08"]} />
-        <Suspense fallback={null}>
-          <Rig controls={controls} offset={offset} offsetMobile={offsetMobile} interactive={interactive && !reduced}>
-            <Particles count={count} reduced={reduced} controls={controls} />
-            <Core reduced={reduced} controls={controls} />
-          </Rig>
-          {bloom && (
-            <EffectComposer multisampling={0}>
-              <Bloom luminanceThreshold={1} luminanceSmoothing={0.25} intensity={0.9} mipmapBlur radius={0.6} />
-            </EffectComposer>
-          )}
-        </Suspense>
-      </Canvas>
+      {webgl ? (
+        <SceneBoundary onError={() => setWebgl(false)}>
+          <Canvas
+            frameloop={onScreen ? "always" : "never"}
+            dpr={degraded ? 1 : [1, 1.5]}
+            camera={{ position: [0, 0.15, 7.6], fov: 40 }}
+            gl={{ antialias: false, alpha: false, powerPreference: "high-performance" }}
+            onCreated={({ gl }) => gl.domElement.addEventListener("webglcontextlost", () => setWebgl(false), { once: true })}
+          >
+            <color attach="background" args={["#0c0a08"]} />
+            <PerformanceMonitor onDecline={() => setDegraded(true)} />
+            <Suspense fallback={null}>
+              <Rig controls={controls} offset={offset} offsetMobile={offsetMobile} interactive={interactive && !reduced}>
+                <Particles count={count} reduced={reduced} controls={controls} />
+                <Core reduced={reduced} controls={controls} />
+              </Rig>
+              {bloom && !degraded && (
+                <EffectComposer multisampling={0}>
+                  <Bloom luminanceThreshold={1} luminanceSmoothing={0.25} intensity={0.9} mipmapBlur radius={0.6} />
+                </EffectComposer>
+              )}
+            </Suspense>
+          </Canvas>
+        </SceneBoundary>
+      ) : (
+        <Fallback />
+      )}
     </div>
   );
 }
