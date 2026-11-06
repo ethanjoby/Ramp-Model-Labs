@@ -2,9 +2,9 @@
 
 import clsx from "clsx";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { ArrowLeft, Check, Download, X } from "lucide-react";
+import { ArrowLeft, Check, Download, GraduationCap, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgentFeed } from "@/components/lab/parts";
 import { Badge, Card, Stat } from "@/components/ui/bits";
@@ -36,7 +36,23 @@ function Rail({ stage }: { stage: string }) {
 
 export function WorkflowView() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const { wf, events, error, stage, live } = useWorkflow(id);
+  const [teaching, setTeaching] = useState(false);
+  const [teachErr, setTeachErr] = useState<string | null>(null);
+
+  // A finished file is training data: decisions a person made are labels, the rest the teacher model labels by agreement.
+  const teach = async () => {
+    setTeaching(true);
+    setTeachErr(null);
+    try {
+      const r = await api<{ lab_id: string }>(`/api/workflows/${id}/teach`, { method: "POST" });
+      router.push(`/app/labs/${r.lab_id}`);
+    } catch (e) {
+      setTeachErr(e instanceof Error ? e.message : "Couldn't start the lab.");
+      setTeaching(false);
+    }
+  };
   const [rows, setRows] = useState<WorkflowRow[]>([]);
   const [onlyReview, setOnlyReview] = useState(false);
   const [rowErr, setRowErr] = useState<string | null>(null);
@@ -80,7 +96,11 @@ export function WorkflowView() {
           </p>
         </div>
         {wf?.status === "completed" && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <button onClick={teach} disabled={teaching} title="Start a lab that learns from this file: your review decisions become labels; unlabeled rows are labeled by the teacher model where they agree"
+              className="inline-flex h-9 items-center gap-2 rounded-full border border-line bg-white px-4 text-[13px] text-ink transition-colors hover:border-ink/40 disabled:opacity-60">
+              <GraduationCap className="h-3.5 w-3.5" /> {teaching ? "Starting lab…" : "Teach a model from this file"}
+            </button>
             <a href={`/api/workflows/${wf.id}/export?format=xlsx`} className="inline-flex h-9 items-center gap-2 rounded-full bg-ink px-4 text-[13px] font-medium text-white hover:bg-ink-3"><Download className="h-3.5 w-3.5" /> Excel</a>
             <a href={`/api/workflows/${wf.id}/export?format=csv`} className="inline-flex h-9 items-center gap-2 rounded-full border border-line bg-white px-4 text-[13px] text-ink hover:border-ink/40">CSV</a>
           </div>
@@ -88,6 +108,7 @@ export function WorkflowView() {
       </div>
       <div className="mt-6"><Rail stage={stage} /></div>
       {wf?.error && <p role="alert" className="mt-4 rounded-xl bg-danger/5 px-4 py-3 text-[13.5px] text-danger">{wf.error}</p>}
+      {teachErr && <p role="alert" className="mt-4 text-[13px] text-danger">{teachErr}</p>}
 
       {wf && (
         <Card className="mt-6 grid grid-cols-2 gap-6 p-5 md:grid-cols-5">

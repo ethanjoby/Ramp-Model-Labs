@@ -40,9 +40,9 @@ Everything works with no other keys: the procedural data engine and the local sp
 
 | Key | Unlocks |
 | --- | --- |
-| `torch` + `transformers` (installed by `uv sync`) | The local MiniLM fine-tune; without them the candidate is listed as skipped |
+| `torch` + `transformers` (installed by `uv sync`) | The local encoder fine-tunes: MiniLM-L6 (22M) and ModernBERT-base (150M, after a short masked-LM warm-up on your own rows); without them both candidates are listed as skipped |
 | `ANTHROPIC_API_KEY` | Planner for open-ended tasks, synthetic data, prompted candidates (zero-shot Haiku, optimized few-shot program), the frontier reference, the cascade's LLM level, the copilot's natural-language tool use |
-| Modal (`uv run modal token new && uv run modal deploy modal_app.py`, then `MODAL_ENABLED=true`) | LoRA fine-tune of Qwen2.5-0.5B on an L4 GPU, plus serving for deployed adapters |
+| Modal (`uv run modal token new && uv run modal deploy modal_app.py`, then `MODAL_ENABLED=true`) | LoRA fine-tune of Qwen3-1.7B on an L4 GPU (`MODAL_BASE_MODEL` to change it, `MODAL_HEAVY_MODEL` to add a second, e.g. `Qwen/Qwen3-4B-Instruct-2507`), plus serving for deployed adapters. `uv run modal run modal_app.py` is a smoke test that prints accuracy, timing and GPU cost (cents) |
 
 ## What a lab does
 
@@ -50,15 +50,19 @@ Everything works with no other keys: the procedural data engine and the local sp
 2. **Curator** builds the dataset. Real examples are reserved for evaluation first, then the procedural generators and Claude fill in training data across several styles. Small uploads get label-preserving variants of their training rows (never of test or dev rows). Near-duplicates are dropped, splits are stratified.
 3. **Trainer** runs every available strategy in parallel against the same splits:
    - local specialists: Naive Bayes, tuned linear, SVM, tiny neural net
-   - a real language model, fine-tuned locally: MiniLM-L6 (22M parameters) with a new classification head, trained end to end on the lab's split on Apple-silicon GPU or CPU in roughly 10-20 s, evaluated and served on CPU (about 7 ms a call)
+   - real language models, fine-tuned locally: MiniLM-L6 (22M parameters) and ModernBERT-base (150M) with a new classification head, trained end to end on the lab's split on Apple-silicon GPU or CPU (10-20 s and 1-3 min), evaluated and served on CPU (about 7 ms and 100 ms a call). ModernBERT first spends 45 s on a masked-LM warm-up over the task's own inputs, the laptop-sized version of task-adaptive continued pretraining. DeBERTa-v3 was tried and dropped: it produces NaN losses on Apple GPUs
    - cascade: learned rules → small model → LLM → human review
    - prompted: zero-shot Haiku, optimized few-shot prompt program
-   - fine-tuned: LoRA on Modal
+   - fine-tuned on a GPU: LoRA (rank 8, every linear layer) on Qwen3-1.7B on a Modal L4, with label-only targets and thinking switched off, because chain-of-thought hurts models under ~10B parameters; serving cost is priced from the batched throughput measured in the same container, and labelled an estimate
    - frontier reference (Sonnet), used as the yardstick, never deployed
 4. **Judge** keeps candidates that meet the bar, takes the cheapest within tolerance of the best, and explains the pick. Accuracy, latency and cost per 1k calls are all measured, not estimated, except the frontier cost when no key is present.
 5. **Deployer** publishes `POST /v1/models/{slug}/predict`. Corrections made in the playground become real labeled data; retraining re-runs the lab with them.
 
 The homepage replays one real run from its stored events (`frontend/src/components/marketing/demo-lab.json`), through the same reducer the product uses.
+
+### Teacher labels
+
+Uploaded rows without a label are not thrown away. With an Anthropic key, Sonnet labels them by asking three ways (plain instruction, label meanings, labeled examples) and keeping only the labels a majority agrees on; disagreements are dropped, never guessed. Teacher rows train the model and never score it, so a teacher's mistakes cannot become the test. Capped by `TEACHER_MAX_ROWS` (default 1,500, about $1 per 1,000 rows).
 
 ## Workflows: a file in, decisions out
 
@@ -68,6 +72,7 @@ A workflow takes what a finance team actually has and runs it through the best m
 - **Model choice**: a model you name, else the live model whose task best matches your prompt and the labels in the file, else a new lab is built on the spot when the file is labeled or the prompt matches a built-in workflow.
 - **Run**: every row is classified in batches; rows under the confidence floor, or routed to review by the cascade, land in a review queue. A person's decision is saved as feedback for the model's next retrain.
 - **Outputs**: a summary (distribution, automatic vs review, mean confidence, measured cost against the frontier estimate, accuracy on any labeled rows in the file), an Excel or CSV export with the original columns plus `prediction`, `confidence`, `needs_review`, `runner_up`, and a live activity stream.
+- **Teach**: a finished workflow becomes training data with one click. A person's review decisions and the file's own label column are labels; everything else goes to the teacher model. The lab that starts keeps the deployed model's task, so the new model is a drop-in successor.
 
 API: `POST /api/workflows` (multipart `file` or `text`, optional `prompt`, `deployment`, `confidence_floor`), `GET /api/workflows/{id}`, `/rows?review=true`, `POST /rows/{row_id}/review`, `GET /export?format=xlsx|csv`, `GET /events` (SSE).
 

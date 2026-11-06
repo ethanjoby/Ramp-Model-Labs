@@ -10,6 +10,8 @@ import asyncio
 import json
 import math
 import os
+import shutil
+import tempfile
 import time
 from typing import Any, Callable
 
@@ -20,6 +22,7 @@ DEFAULT_MODEL = "sentence-transformers/all-MiniLM-L6-v2"  # 22M params, BERT arc
 MAX_LEN = 64            # financial descriptors are short; longer inputs are truncated
 BATCH = 32  # halved for small datasets so they still get enough optimizer steps
 MAX_TRAIN_SECONDS = 150  # time box so a lab never waits on one candidate; the best finished epoch is kept
+TACP_SECONDS = 45        # masked-LM warm-up budget on the user's own rows before the classifier is trained
 ARTIFACT_DIR = "encoder"
 
 
@@ -55,12 +58,54 @@ def _predict(model, tok, device, texts: list[str], labels: list[str], batch: int
     return out
 
 
+def _tacp_warmup(name: str, tok, texts: list[str], device, seconds: float, log: Callable[[str], None]) -> tuple[str, int, float]:
+    """Task-adaptive continued pretraining (FinPythia-style, scaled to a laptop): a short masked-LM pass over the
+    task's own inputs before the classifier is trained, so the encoder meets this ledger's merchant strings,
+    separators and amount formats first. Returns a temp dir holding the adapted weights."""
+    import torch
+    from transformers import AutoModelForMaskedLM, DataCollatorForLanguageModeling
+
+    mlm = AutoModelForMaskedLM.from_pretrained(name).to(device)
+    collator = DataCollatorForLanguageModeling(tok, mlm_probability=0.15)
+    opt = torch.optim.AdamW(mlm.parameters(), lr=5e-5, weight_decay=0.01)
+    mlm.train()
+    t0, steps, loss_v = time.perf_counter(), 0, float("nan")
+    order = torch.randperm(len(texts)).tolist()
+    for i in range(0, len(order), 32):
+        batch = [texts[j] for j in order[i:i + 32]]
+        enc = tok(batch, padding=True, truncation=True, max_length=MAX_LEN)
+        feats = collator([{k: v[r] for k, v in enc.items()} for r in range(len(batch))])
+        out = mlm(**{k: v.to(device) for k, v in feats.items()})
+        out.loss.backward()
+        torch.nn.utils.clip_grad_norm_(mlm.parameters(), 1.0)
+        opt.step()
+        opt.zero_grad(set_to_none=True)
+        loss_v, steps = out.loss.item(), steps + 1
+        if time.perf_counter() - t0 > seconds:
+            break
+    tmp = tempfile.mkdtemp(prefix="rml-tacp-")
+    mlm.save_pretrained(tmp)
+    tok.save_pretrained(tmp)
+    log(f"tacp · masked-LM warm-up on {len(texts)} of this task's rows · {steps} steps · loss {loss_v:.3f} · {time.perf_counter() - t0:.0f}s")
+    del mlm, opt
+    return tmp, steps, loss_v
+
+
 class EncoderFinetune(Strategy):
-    key = "finetuned_encoder"
-    display_name = "Fine-tuned MiniLM (22M, local)"
     family = "finetuned"
-    blurb = ("A pretrained transformer encoder with a new classification head, trained end to end on this task's data, "
-             "on this machine. You own the weights.")
+    uses_gpu = "local"
+
+    def __init__(self, model: str | None = None, key: str = "finetuned_encoder", display: str | None = None,
+                 tag: str = "minilm", max_train_seconds: int = MAX_TRAIN_SECONDS, tacp: bool = False):
+        self.model = model or model_name()
+        self.key = key
+        self.tag = tag
+        self.max_train_seconds = max_train_seconds
+        self.tacp = tacp
+        self.display_name = display or "Fine-tuned MiniLM (22M, local)"
+        self.blurb = (f"A pretrained transformer encoder ({self.model.split('/')[-1]}) with a new classification head, trained "
+                      "end to end on this task's data, on this machine"
+                      + (", after a short masked-LM warm-up on your own rows" if tacp else "") + ". You own the weights.")
 
     def available(self) -> tuple[bool, str]:
         try:
@@ -84,14 +129,23 @@ class EncoderFinetune(Strategy):
 
         os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
         torch.manual_seed(0)
-        name, labels = model_name(), ctx.spec.labels
+        name, labels = self.model, ctx.spec.labels
         idx = {l: i for i, l in enumerate(labels)}
         dev_name = device_name()
         device = torch.device(dev_name)
         tok = AutoTokenizer.from_pretrained(name)
-        model = AutoModelForSequenceClassification.from_pretrained(name, num_labels=len(labels)).to(device)
 
         X = [r["text"] for r in ctx.train]
+        tacp_steps, tacp_dir = 0, None
+        if self.tacp and len(X) >= 400:
+            try:
+                tacp_dir, tacp_steps, _ = _tacp_warmup(name, tok, X, device, TACP_SECONDS, log)
+            except Exception as e:  # the warm-up is a bonus, never the reason a candidate fails
+                log(f"tacp · skipped ({e.__class__.__name__}: {str(e)[:80]})")
+        model = AutoModelForSequenceClassification.from_pretrained(tacp_dir or name, num_labels=len(labels)).to(device)
+        if tacp_dir:
+            shutil.rmtree(tacp_dir, ignore_errors=True)
+
         y = torch.tensor([idx[r["label"]] for r in ctx.train])
         Xd = [r["text"] for r in ctx.dev]
         yd = [idx[r["label"]] for r in ctx.dev]
@@ -102,12 +156,12 @@ class EncoderFinetune(Strategy):
         total = epochs * steps_per_epoch
         warm = max(1, int(0.06 * total))
         # The fresh head learns fast, the pretrained encoder moves gently.
-        head = [p for n_, p in model.named_parameters() if n_.startswith(("classifier", "pre_classifier"))]
+        head = [p for n_, p in model.named_parameters() if n_.startswith(("classifier", "pre_classifier", "pooler", "score"))]
         head_ids = {id(p) for p in head}
         body = [p for p in model.parameters() if id(p) not in head_ids]
         opt = torch.optim.AdamW([{"params": body, "lr": 5e-5}, {"params": head, "lr": 2e-3}], weight_decay=0.01)
         sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: min(1.0, (s + 1) / warm) * max(0.0, (total - s) / total))
-        log(f"minilm · {n} examples · {epochs} epochs · batch {batch_size} · training on {dev_name}")
+        log(f"{self.tag} · {n} examples · {epochs} epochs · batch {batch_size} · training on {dev_name}")
 
         t0 = time.perf_counter()
         best_acc, best_state, step, time_boxed = -1.0, None, 0, False
@@ -126,18 +180,18 @@ class EncoderFinetune(Strategy):
                 opt.zero_grad(set_to_none=True)
                 loss_sum += out.loss.item()
                 step += 1
-                if time.perf_counter() - t0 > MAX_TRAIN_SECONDS:
+                if time.perf_counter() - t0 > self.max_train_seconds:
                     time_boxed = True
                     break
             model.eval()
             acc = (sum(p == labels[t] for p, t in zip(_predict(model, tok, device, Xd, labels), yd)) / len(yd)) if yd else float("nan")
-            log(f"minilm · epoch {ep + 1}/{epochs} · loss {loss_sum / max(1, steps_per_epoch):.3f}"
+            log(f"{self.tag} · epoch {ep + 1}/{epochs} · loss {loss_sum / max(1, steps_per_epoch):.3f}"
                 + (f" · dev acc {acc:.1%}" if yd else "") + f" · {time.perf_counter() - t0:.0f}s")
             if not yd or acc >= best_acc:
                 best_acc = acc
                 best_state = {k: v.detach().cpu().clone() for k, v in model.state_dict().items()}
             if time_boxed:
-                log(f"minilm · {MAX_TRAIN_SECONDS}s time box reached, keeping the best epoch so far")
+                log(f"{self.tag} · {self.max_train_seconds}s time box reached, keeping the best epoch so far")
                 break
         train_s = time.perf_counter() - t0
         if best_state is not None:
@@ -166,8 +220,9 @@ class EncoderFinetune(Strategy):
             predictions=preds, latencies_ms=lat, cost_per_1k=round(p50_s * 1000 * CPU_DOLLARS_PER_SEC, 7),
             train_cost=train_s * CPU_DOLLARS_PER_SEC, train_seconds=train_s, size_kb=round(size_kb, 1), artifact_path=path,
             notes=(f"{name.split('/')[-1]} · {epochs} epochs on {dev_name} in {train_s:.0f}s"
-                   + (" (time-boxed)" if time_boxed else "") + " · served on CPU"),
-            extra={"device": dev_name, "epochs": epochs, "steps": step,
+                   + (" (time-boxed)" if time_boxed else "") + (f" · masked-LM warm-up {tacp_steps} steps" if tacp_steps else "")
+                   + " · served on CPU"),
+            extra={"device": dev_name, "epochs": epochs, "steps": step, "tacp_steps": tacp_steps,
                    "best_dev_acc": None if math.isnan(best_acc) else round(best_acc, 4)},
         )
 

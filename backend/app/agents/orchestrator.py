@@ -22,6 +22,7 @@ from . import planner, selector
 # Process-wide, so ten labs at once share the machine instead of each assuming it is alone.
 _CPU = asyncio.Semaphore(max(2, (os.cpu_count() or 4) // 2))
 _LLM = asyncio.Semaphore(6)
+_GPU = asyncio.Semaphore(1)  # one local-GPU trainer at a time: three encoders at once would thrash 16 GB of unified memory
 _LAB_SLOTS = asyncio.Semaphore(3)
 CANDIDATE_TIMEOUT_S = {"finetuned": 25 * 60}
 DEFAULT_TIMEOUT_S = 20 * 60
@@ -114,7 +115,7 @@ async def run_lab(lab_id: str) -> None:
 
             async def run_one(st):
                 nonlocal spend
-                sem = _CPU if st.family == "classical" else _LLM
+                sem = _CPU if st.family == "classical" else _GPU if getattr(st, "uses_gpu", None) == "local" else _LLM
                 cid = cand_ids[st.key]
                 async with sem:
                     await emit("trainer", "candidate", f"training {st.display_name}", {"key": st.key, "status": "running"})

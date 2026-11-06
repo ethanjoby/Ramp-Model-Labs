@@ -76,7 +76,8 @@ async def predict(c: Candidate, texts: list[str]) -> tuple[list[dict], float]:
         from .trainers.prompted import _normalize
 
         fn = modal.Function.from_name(get_settings().modal_app_name, "predict")
-        preds = await fn.remote.aio(obj["adapter"], obj["instruction"], obj["labels"], texts)
+        preds = await fn.remote.aio(obj["adapter"], obj["instruction"], obj["labels"], texts,
+                                    base_model=obj.get("base_model") or get_settings().modal_base_model)
         out = [{"label": _normalize(p, obj["labels"]), "confidence": None, "top": None} for p in preds]
     else:
         from .trainers.prompted import classify_one

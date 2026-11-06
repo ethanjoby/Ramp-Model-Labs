@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sqlmodel import Session, select
 from sse_starlette.sse import EventSourceResponse
 
+from .. import labs as lab_service
 from .. import workflows as wf
 from ..config import get_settings
 from ..db import Candidate, Deployment, Feedback, Lab, LabEvent, User, get_session
@@ -130,6 +131,28 @@ def review_row(wf_id: str, row_id: int, body: ReviewIn, user: User = Depends(cur
         s.add(Feedback(deployment_id=dep.id, text=r.text, predicted=r.label or "", correct=body.label))
     s.commit()
     return _row_out(r)
+
+
+@router.post("/{wf_id}/teach")
+def teach_from_workflow(wf_id: str, user: User = Depends(current_user), s: Session = Depends(get_session)):
+    """Turn a finished workflow into training data: a person's decisions are labels, the file's own label column
+    is a label, and everything else goes in unlabeled for the teacher model to label by agreement. The lab that
+    starts keeps the deployed model's task so the new model is a drop-in successor."""
+    w = _own(wf_id, user, s)
+    if w.status not in ("completed", "failed"):
+        raise HTTPException(409, "Wait for the workflow to finish first.")
+    rows = s.exec(select(wf.WorkflowRow).where(wf.WorkflowRow.workflow_id == wf_id).order_by(wf.WorkflowRow.idx)).all()
+    if not rows:
+        raise HTTPException(422, "This workflow has no rows to learn from.")
+    seeds = [{"text": r.text, "label": r.reviewed_label or r.meta.get("label") or None} for r in rows]
+    dep = s.get(Deployment, w.deployment_id) if w.deployment_id else None
+    old = s.get(Lab, dep.lab_id) if dep else None
+    prompt = old.prompt if old else (w.prompt or "Classify these rows")
+    if old:
+        seeds = list(old.seed_examples or []) + seeds
+    lab = lab_service.create_lab(s, user, prompt, seeds)
+    return {"lab_id": lab.id, "labeled": sum(1 for x in seeds if x.get("label")),
+            "unlabeled": sum(1 for x in seeds if not x.get("label")), "from_deployment": dep.slug if dep else None}
 
 
 @router.get("/{wf_id}/export")

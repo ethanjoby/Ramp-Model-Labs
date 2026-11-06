@@ -40,8 +40,8 @@ const AGENTS = [
   {
     name: "Trainer",
     title: "Runs competing strategies in parallel",
-    body: "Small specialist models, a transformer language model fine-tuned on this machine, a LoRA fine-tune of an open model on GPUs, zero-shot LLMs, and a DSPy-style optimized prompt program. Fine-tuning is a candidate, not a default.",
-    detail: ["linear, SVM, tiny MLP", "MiniLM fine-tuned locally", "Qwen2.5 LoRA on Modal L4", "prompt search over instructions + demos"],
+    body: "Small specialist models, two transformer encoders fine-tuned on this machine (one after a masked-LM warm-up on your own rows), a LoRA fine-tune of Qwen3 on a GPU, zero-shot LLMs, and a DSPy-style optimized prompt program. Fine-tuning is a candidate, not a default.",
+    detail: ["linear, SVM, tiny MLP", "MiniLM + ModernBERT fine-tuned locally", "Qwen3-1.7B LoRA on a Modal L4", "prompt search over instructions + demos"],
   },
   {
     name: "Judge",
@@ -108,7 +108,8 @@ export function Pipeline() {
 const TIERS = [
   { name: "Frontier LLM", sub: "Sonnet-class, every request", per1k: 0.74, tone: "bg-ink/80" },
   { name: "Small LLM", sub: "Haiku 5.5, zero-shot", per1k: 0.035, tone: "bg-ink/50" },
-  { name: "Fine-tuned 0.5B", sub: "LoRA on a shared L4 GPU", per1k: 0.0056, tone: "bg-solar-deep" },
+  { name: "Fine-tuned Qwen3-1.7B", sub: "LoRA on a shared L4 GPU, est.", per1k: 0.009, tone: "bg-solar-deep" },
+  { name: "Fine-tuned ModernBERT", sub: "150M params, trained locally, served on CPU", per1k: 0.0013, tone: "bg-solar-deep" },
   { name: "Fine-tuned MiniLM", sub: "22M params, trained locally, served on CPU", per1k: 0.0001, tone: "bg-solar-deep" },
   { name: "Specialist", sub: "Trained by Model Labs, CPU", per1k: 0.000012, tone: "bg-solar" },
 ];

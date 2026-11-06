@@ -137,3 +137,15 @@ def test_model_choice_respects_the_labels_in_the_file(signed_in, fraud):
         assert chosen is None and "labels" in why
 
         s.delete(draft); s.delete(cand); s.delete(lab); s.commit()
+
+
+def test_finished_workflow_teaches_a_successor_model(signed_in, fraud):
+    w = signed_in.get("/api/workflows").json()[0]
+    assert w["status"] == "completed"
+    r = signed_in.post(f"/api/workflows/{w['id']}/teach")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["labeled"] + body["unlabeled"] >= w["rows_total"] and body["from_deployment"] == w["deployment"]["slug"]
+    lab = wait_for_lab(signed_in, body["lab_id"])
+    assert lab["status"] == "completed", lab["error"]
+    assert lab["prompt"] == signed_in.get(f"/api/labs/{fraud['id']}").json()["prompt"]

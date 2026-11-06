@@ -41,6 +41,10 @@ class Settings(BaseSettings):
 
     modal_enabled: bool = False  # set true after `modal token new` + `modal deploy modal_app.py`
     modal_app_name: str = "ramp-model-labs"
+    modal_base_model: str = "Qwen/Qwen3-1.7B"  # the LoRA candidate's base; any HF causal LM with a chat template
+    modal_heavy_model: str = ""  # e.g. "Qwen/Qwen3-4B-Instruct-2507" adds a second, slower LoRA candidate
+
+    teacher_max_rows: int = 1500  # unlabeled uploaded rows the frontier model will label per lab (about $1 per 1k)
 
     max_upload_bytes: int = 5 * 1024 * 1024
 

@@ -61,6 +61,7 @@ class Strategy:
     display_name = "Base"
     family = "classical"
     blurb = ""
+    uses_gpu: str | None = None  # "local": the Mac's GPU (serialized); "remote": a cloud GPU; None: CPU or an API
 
     def available(self) -> tuple[bool, str]:
         return True, ""

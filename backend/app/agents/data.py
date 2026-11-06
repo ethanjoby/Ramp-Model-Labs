@@ -9,6 +9,7 @@ import re
 from typing import Any
 
 from .. import llm
+from ..config import get_settings
 from ..datasets.templates import TEMPLATES, generate
 from ..trainers.base import Emit, TaskSpec
 
@@ -127,6 +128,7 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
     ignored = {"unlabeled": 0, "off_spec": 0, "empty": 0}
     real: list[dict] = []
     off_spec_examples: list[str] = []
+    unlabeled_texts: list[str] = []
     for r in seed_examples:
         text = str(r.get("text") or "").strip()
         label = r.get("label")
@@ -134,7 +136,7 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
             ignored["empty"] += 1
             continue
         if label is None or str(label).strip() == "":
-            ignored["unlabeled"] += 1
+            unlabeled_texts.append(text)
             continue
         label = str(label).strip()
         if label not in spec.labels:
@@ -143,12 +145,28 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
                 off_spec_examples.append(label)
             continue
         real.append({"text": text, "label": label, "source": "user"})
+    teach = bool(unlabeled_texts) and llm.available()
+    if not teach:
+        ignored["unlabeled"] = len(unlabeled_texts)
     if sum(ignored.values()):
         await emit("data", "log", f"ignored {sum(ignored.values())} uploaded rows: {ignored['unlabeled']} unlabeled, "
                                   f"{ignored['off_spec']} with labels outside the spec" + (f" (e.g. {', '.join(off_spec_examples)})" if off_spec_examples else "")
                                   + f", {ignored['empty']} empty")
     if real:
         await emit("data", "log", f"{len(real)} labeled examples from you, reserved for evaluation first")
+
+    # Unlabeled rows are still the user's real inputs: the frontier model labels them, by agreement, for training only.
+    teacher_rows: list[dict] = []
+    teacher_stats: dict | None = None
+    if teach:
+        from . import teacher
+
+        await emit("data", "log", f"teacher · {len(unlabeled_texts)} uploaded rows carry no label; asking "
+                                  f"{get_settings().agent_model} three ways and keeping the agreements")
+        teacher_rows, teacher_stats = await teacher.label_rows(spec, unlabeled_texts, usage, examples=real)
+        await emit("data", "log", f"teacher · kept {teacher_stats['kept']} of {teacher_stats['asked']} "
+                                  f"({teacher_stats['dropped']} disagreements dropped) · ${teacher_stats['cost']:.3f} · "
+                                  "these rows train the model and never score it")
 
     pool: list[dict] = []
     clean: list[dict] = []
@@ -174,7 +192,7 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
         pool += synth
         await emit("data", "log", f"synthesizer · {len(synth)} examples generated (${usage.cost:.3f} so far)")
 
-    (real, clean, pool), dropped = _dedupe([real, clean, pool])
+    (real, clean, pool, teacher_rows), dropped = _dedupe([real, clean, pool, teacher_rows])
     if dropped:
         await emit("data", "log", f"dedupe · removed {dropped} near-duplicates")
 
@@ -208,6 +226,8 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
         eval_source = ("your real examples" if test and all(r["source"] == "user" for r in test)
                        else "held-out synthetic (upload real examples for a stricter test)")
 
+    train += teacher_rows  # after the split: a teacher's mistakes must not become the test
+
     # nothing in train may be a digit-folded twin of a held-out row
     held = {_fold(r["text"]) for r in test + dev}
     before = len(train)
@@ -220,7 +240,7 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
         raise ValueError("Not enough training data. Upload more labeled examples or add an ANTHROPIC_API_KEY.")
 
     # a template's 2,400 rows must not drown the rows the user actually cares about
-    user_train = [r for r in train if r["source"] == "user"]
+    user_train = [r for r in train if r["source"] in ("user", "teacher")]  # the user's real inputs, either way labeled
     if user_train and pool:
         share = len(user_train) / len(train)
         if share < USER_SHARE:
@@ -247,7 +267,7 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
         "eval_source": eval_source,
         "samples": [{"text": r["text"], "label": r["label"], "source": r["source"]} for r in rng.sample(train, min(8, len(train)))],
         "imbalance": round(max(counts.values()) / max(1, min(counts.values() or [1])), 2),
-        "noise_rate": noise_rate, "ignored": ignored, "leak_removed": leaked, "notes": notes,
+        "noise_rate": noise_rate, "ignored": ignored, "leak_removed": leaked, "notes": notes, "teacher": teacher_stats,
     }
     await emit("data", "metric", f"dataset ready · {len(train)} train / {len(dev)} dev / {len(test)} test · eval on {eval_source}",
                {"dataset": stats})
