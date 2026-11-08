@@ -46,7 +46,7 @@ def signed_in(client):
     return client
 
 
-def wait_for_lab(client, lab_id, timeout=180):
+def wait_for_lab(client, lab_id, timeout=540):  # an offline lab now trains ten local candidates, four of them on the serialized GPU queue
     deadline = time.time() + timeout
     while time.time() < deadline:
         lab = client.get(f"/api/labs/{lab_id}").json()

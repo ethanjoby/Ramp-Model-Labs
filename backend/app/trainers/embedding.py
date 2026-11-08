@@ -136,6 +136,11 @@ class EmbeddingSpecialist(_Classical):
             yd = [r["label"] for r in ctx.dev]
             Ed = embed(self.model, Xd, dev_name) if Xd else None
             log(f"embedding · {len(X)} rows embedded with {self.model.split('/')[-1]} on {dev_name} in {time.perf_counter() - t0:.0f}s")
+            if dev_name != "cpu":  # the bulk pass is over; give the GPU back to the fine-tunes queued behind it
+                _models.pop((self.model, dev_name), None)
+                from .encoder import _free_gpu
+
+                _free_gpu()
             use_cv = len(yd) < 30
             best_c, best_acc, trials = 8.0, -1.0, []
             for C in (2.0, 8.0, 32.0):

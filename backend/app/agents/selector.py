@@ -8,6 +8,7 @@ from .. import llm
 from ..trainers.base import TaskSpec
 
 SONNET_CACHE_READ_PER_MTOK = 0.20
+COST_NOISE_PER_1K = 0.001  # $1 per million calls: below this, serving cost cannot be what decides between two models
 
 
 def wilson(acc: float, n: int, z: float = 1.96) -> tuple[float, float]:
@@ -77,9 +78,9 @@ def choose(spec: TaskSpec, cands: list[dict], imbalance: float | None = None) ->
     elif spec.priority == "accuracy":
         key = lambda c: (-c["metrics"]["accuracy"], c["metrics"]["cost_per_1k"])  # noqa: E731
     else:
-        # Costs within 2x of the cheapest are effectively tied: take the most accurate, then the smallest.
+        # Costs within 2x of the cheapest, or under a dollar per million calls, are effectively tied: take the most accurate.
         floor = min(c["metrics"]["cost_per_1k"] for c in near)
-        near = [c for c in near if c["metrics"]["cost_per_1k"] <= max(floor * 2, floor + 1e-6)]
+        near = [c for c in near if c["metrics"]["cost_per_1k"] <= max(floor * 2, floor + 1e-6, COST_NOISE_PER_1K)]
         # Then the one that keeps its answers under noisy copies of the same rows, then the smallest.
         key = lambda c: (-c["metrics"]["accuracy"], -(c["metrics"].get("robust_accuracy") or 0), c["metrics"].get("size_kb") or 0)  # noqa: E731
     winner = sorted(near, key=key)[0]

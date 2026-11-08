@@ -47,7 +47,9 @@ class Settings(BaseSettings):
 
     local_lm_model: str = "sentence-transformers/all-MiniLM-L6-v2"  # fine-tuned locally when torch is installed
     local_embed_model: str = "BAAI/bge-small-en-v1.5"  # frozen sentence embeddings + linear head (33M, CPU-served)
-    local_llm_model: str = "Qwen/Qwen3-0.6B"  # a small decoder LLM fine-tuned as a classifier on this machine; "" disables
+    # Small decoder LLMs fine-tuned as classifiers on this machine (top blocks + head), comma-separated; "" disables.
+    # "Qwen/Qwen3-0.6B,deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B" adds DeepSeek's distill (~5 min on an M-series GPU, ~370 ms/row on CPU).
+    local_llm_model: str = "Qwen/Qwen3-0.6B"
 
     modal_enabled: bool = False  # set true after `modal token new` + `modal deploy modal_app.py`
     modal_app_name: str = "ramp-model-labs"

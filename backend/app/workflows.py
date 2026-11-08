@@ -55,12 +55,12 @@ from sqlmodel import Session, select  # noqa: E402
 from . import labs  # noqa: E402
 from .datasets.templates import match_template  # noqa: E402
 from .db import Candidate, Deployment, Lab, User, engine  # noqa: E402
-from .events import bus  # noqa: E402
+from .events import bus, spawn  # noqa: E402
 from .inference import predict  # noqa: E402
 
 BATCH = 100
 BUILD_TIMEOUT_S = 25 * 60
-_running: dict[str, asyncio.Task] = {}
+_running: dict = {}
 _WORD = re.compile(r"[a-z][a-z0-9]{2,}")
 
 
@@ -74,7 +74,7 @@ def _update(wf_id: str, **fields: Any) -> None:
 
 
 def start(wf_id: str) -> None:
-    _running[wf_id] = asyncio.create_task(run(wf_id))
+    _running[wf_id] = spawn(run(wf_id))  # from async routes or sync ones in a worker thread alike
 
 
 def _words(text: str) -> set[str]:

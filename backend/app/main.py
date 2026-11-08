@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 
@@ -5,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from . import firebase
+from . import events, firebase
 from .agents.orchestrator import recover_interrupted
 from .api.routes import api, public
 from .api.workflows import router as workflows_router
@@ -20,6 +21,7 @@ async def lifespan(app: FastAPI):
     firebase.log_startup()
     init_db()
     recover_interrupted()
+    events.bind_loop(asyncio.get_running_loop())  # sync endpoints start labs from worker threads via this loop
     yield
 
 

@@ -30,6 +30,21 @@ ARTIFACT_DIR = "encoder"
 _LAYER = re.compile(r"\.(?:layers|layer)\.(\d+)\.")
 
 
+def _free_gpu() -> None:
+    """Return cached blocks to the GPU between candidates; the allocator otherwise keeps a finished model's memory."""
+    try:
+        import gc
+        import torch
+
+        gc.collect()
+        if torch.backends.mps.is_available():
+            torch.mps.empty_cache()
+        elif torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
+
+
 def _freeze_except_last(model, n: int) -> None:
     """Train the top `n` transformer blocks, the final norm and the head; embeddings and lower blocks stay frozen.
     A 0.6B decoder fits a laptop GPU this way, and the lower blocks carry the general knowledge we want kept."""
@@ -73,7 +88,8 @@ def _predict(model, tok, device, texts: list[str], labels: list[str], batch: int
     return out
 
 
-def _tacp_warmup(name: str, tok, texts: list[str], device, seconds: float, log: Callable[[str], None]) -> tuple[str, int, float]:
+def _tacp_warmup(name: str, tok, texts: list[str], device, seconds: float, log: Callable[[str], None],
+                 batch: int = 32) -> tuple[str, int, float]:
     """Task-adaptive continued pretraining (FinPythia-style, scaled to a laptop): a short masked-LM pass over the
     task's own inputs before the classifier is trained, so the encoder meets this ledger's merchant strings,
     separators and amount formats first. Returns a temp dir holding the adapted weights."""
@@ -86,16 +102,17 @@ def _tacp_warmup(name: str, tok, texts: list[str], device, seconds: float, log: 
     mlm.train()
     t0, steps, loss_v = time.perf_counter(), 0, float("nan")
     order = torch.randperm(len(texts)).tolist()
-    for i in range(0, len(order), 32):
-        batch = [texts[j] for j in order[i:i + 32]]
-        enc = tok(batch, padding=True, truncation=True, max_length=MAX_LEN)
-        feats = collator([{k: v[r] for k, v in enc.items()} for r in range(len(batch))])
+    for i in range(0, len(order), batch):
+        chunk = [texts[j] for j in order[i:i + batch]]
+        enc = tok(chunk, padding=True, truncation=True, max_length=MAX_LEN)
+        feats = collator([{k: v[r] for k, v in enc.items()} for r in range(len(chunk))])
         out = mlm(**{k: v.to(device) for k, v in feats.items()})
         out.loss.backward()
         torch.nn.utils.clip_grad_norm_(mlm.parameters(), 1.0)
         opt.step()
         opt.zero_grad(set_to_none=True)
         loss_v, steps = out.loss.item(), steps + 1
+        del out
         if time.perf_counter() - t0 > seconds:
             break
     tmp = tempfile.mkdtemp(prefix="rml-tacp-")
@@ -103,6 +120,7 @@ def _tacp_warmup(name: str, tok, texts: list[str], device, seconds: float, log: 
     tok.save_pretrained(tmp)
     log(f"tacp · masked-LM warm-up on {len(texts)} of this task's rows · {steps} steps · loss {loss_v:.3f} · {time.perf_counter() - t0:.0f}s")
     del mlm, opt
+    _free_gpu()  # the warm-up model and its optimizer state must not stay cached while the classifier trains
     return tmp, steps, loss_v
 
 
@@ -140,7 +158,21 @@ class EncoderFinetune(Strategy):
         def log(msg: str) -> None:
             asyncio.run_coroutine_threadsafe(ctx.emit("trainer", "log", msg), loop)
 
-        return await asyncio.to_thread(self._train, ctx, log)
+        return await asyncio.to_thread(self._train_with_retry, ctx, log)
+
+    def _train_with_retry(self, ctx: LabContext, log: Callable[[str], None]) -> Result:
+        """Apple's unified memory is shared with everything else on the laptop; one out-of-memory is retried at half batch."""
+        try:
+            return self._train(ctx, log)
+        except Exception as e:
+            if "memory" not in str(e).lower() or self.batch == 4:
+                raise
+            _free_gpu()
+            self.batch = max(4, (self.batch or BATCH) // 2)
+            log(f"{self.tag} · GPU out of memory; retrying once at batch {self.batch}")
+            return self._train(ctx, log)
+        finally:
+            _free_gpu()
 
     def _train(self, ctx: LabContext, log: Callable[[str], None]) -> Result:
         import torch
@@ -148,6 +180,7 @@ class EncoderFinetune(Strategy):
 
         os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
         torch.manual_seed(0)
+        _free_gpu()
         name, labels = self.model, ctx.spec.labels
         idx = {l: i for i, l in enumerate(labels)}
         dev_name = device_name()
@@ -163,7 +196,7 @@ class EncoderFinetune(Strategy):
         tacp_steps, tacp_dir = 0, None
         if self.tacp and len(X) >= 400:
             try:
-                tacp_dir, tacp_steps, _ = _tacp_warmup(name, tok, X, device, TACP_SECONDS, log)
+                tacp_dir, tacp_steps, _ = _tacp_warmup(name, tok, X, device, TACP_SECONDS, log, batch=min(32, self.batch or 32))
             except Exception as e:  # the warm-up is a bonus, never the reason a candidate fails
                 log(f"tacp · skipped ({e.__class__.__name__}: {str(e)[:80]})")
         model = AutoModelForSequenceClassification.from_pretrained(tacp_dir or name, num_labels=len(labels), dtype=torch.float32)
@@ -208,6 +241,7 @@ class EncoderFinetune(Strategy):
                 sched.step()
                 opt.zero_grad(set_to_none=True)
                 loss_sum += out.loss.item()
+                del out, batch
                 step += 1
                 if time.perf_counter() - t0 > self.max_train_seconds:
                     time_boxed = True

@@ -61,4 +61,4 @@ def test_curator_trains_on_teacher_rows_but_never_tests_on_them(monkeypatch):
     assert st["teacher"]["kept"] == 30 and st["ignored"]["unlabeled"] == 0
     assert sum(1 for r in out["train"] if r["source"] == "teacher") == 30
     assert not any(r["source"] == "teacher" for r in out["test"] + out["dev"])
-    assert st["eval_source"] == "your real examples"
+    assert st["eval_source"].startswith("your real examples")

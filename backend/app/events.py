@@ -68,3 +68,31 @@ def serialize(ev: LabEvent) -> dict[str, Any]:
 
 
 bus = Bus()
+
+
+# ------------------------------------------------------------------ background work from any thread
+
+_loop: "asyncio.AbstractEventLoop | None" = None
+
+
+def bind_loop(loop) -> None:
+    """Remember the app's event loop so sync endpoints (run in FastAPI's worker threads) can still start labs on it."""
+    global _loop
+    _loop = loop
+
+
+def spawn(coro):
+    """Schedule a coroutine on the app's loop from wherever the caller is: a task when already on the loop, a
+    thread-safe handoff from a worker thread. Returns something with .cancel() and .done() either way."""
+    import asyncio
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop is not None:
+        return loop.create_task(coro)
+    if _loop is None:
+        coro.close()
+        raise RuntimeError("no event loop to start background work on")
+    return asyncio.run_coroutine_threadsafe(coro, _loop)

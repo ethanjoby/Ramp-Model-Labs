@@ -14,6 +14,7 @@ from .. import llm
 from ..config import DATA_DIR
 from ..db import Candidate, Deployment, Lab, LabEvent, engine, now
 from ..events import bus
+from ..events import spawn as bus_spawn
 from ..trainers.base import LabContext, TaskSpec, score
 from ..trainers.registry import strategies
 from . import data as data_agent
@@ -27,7 +28,7 @@ _GPU = asyncio.Semaphore(1)  # one local-GPU trainer at a time: three encoders a
 _LAB_SLOTS = asyncio.Semaphore(3)
 CANDIDATE_TIMEOUT_S = {"finetuned": 40 * 60}  # a 16B base downloads ~32 GB into the cache volume on its first run
 DEFAULT_TIMEOUT_S = 20 * 60
-_running: dict[str, asyncio.Task] = {}
+_running: dict = {}  # asyncio.Task or concurrent.futures.Future, both cancellable
 
 
 def _slug(name: str) -> str:
@@ -61,7 +62,7 @@ async def _mark_failed(lab_id: str, msg: str) -> None:
 
 
 def start(lab_id: str) -> None:
-    _running[lab_id] = asyncio.create_task(run_lab(lab_id))
+    _running[lab_id] = bus_spawn(run_lab(lab_id))  # works from async routes and from sync ones run in a worker thread
 
 
 async def run_lab(lab_id: str) -> None:

@@ -11,11 +11,11 @@ size and 4-bit switches on by itself when the bf16 weights would not fit half th
 from __future__ import annotations
 
 import concurrent.futures
-from dataclasses import dataclass
 import json
 import os
 import re
 import time
+from typing import NamedTuple
 
 from ..config import get_settings
 from .base import LabContext, Result, Strategy
@@ -53,8 +53,7 @@ def needs_quantization(base_model: str, gpu: str) -> bool:
     return params_b(base_model) * 2 > 0.5 * GPU_MEMORY_GB.get(gpu, 24)
 
 
-@dataclass(frozen=True)
-class ModelSpec:
+class ModelSpec(NamedTuple):
     base: str
     gpu: str
     quantize: bool
