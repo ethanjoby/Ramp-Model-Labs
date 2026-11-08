@@ -9,16 +9,20 @@ import re
 from typing import Any
 
 from .. import llm
-from ..config import get_settings
+from ..datasets.perturb import perturb, perturb_rows
 from ..datasets.templates import TEMPLATES, generate
 from ..trainers.base import Emit, TaskSpec
 
 PROCEDURAL_N = 2400   # noisy rows for training, the way real ledgers arrive
 CLEAN_N = 600         # noise-free rows for evaluation, so a correct answer is never marked wrong
+UNSEEN_N = 300        # noise-free rows built only from merchants, vendors and phrasings the training pool never contains
 TEST_CAP = 200
+UNSEEN_SHARE = 0.4    # of a synthetic test set, the share drawn from the unseen pool
+PERTURBED_N = 60      # noisy copies of core test rows, scored as a robustness slice rather than in the headline
 DEV_CAP = 150
 AUGMENT_BELOW = 400   # training sets smaller than this get label-preserving variants of their own rows
-USER_SHARE = 0.25     # real rows are upsampled until they are at least this share of a template-fed training set
+USER_SHARE = 0.25     # real rows are weighted up until they are at least this share of a template-fed training set
+REPHRASE_MAX = 400    # uploaded rows the LLM rewrites in other styles (two rewrites each, fidelity-checked)
 
 
 def _norm(t: str) -> str:
@@ -59,8 +63,10 @@ async def _synth_label(spec: TaskSpec, label: str, n: int, seeds: list[dict], us
     return rows[:n]
 
 
-def augment(rows: list[dict], rng: random.Random, target: int) -> list[dict]:
-    """Label-preserving variants of training rows, so a tiny upload still teaches what to ignore."""
+def augment(rows: list[dict], rng: random.Random, target: int, source: str = "augmented") -> list[dict]:
+    """Label-preserving variants of training rows: truncated merchants, other casings and separators, typos,
+    reformatted amounts, processor prefixes, a dropped token. Variants rather than copies, because repeating the
+    same tokens teaches a model to memorize them while rewrites teach it what to ignore."""
     if target <= 0 or not rows:
         return []
     out: list[dict] = []
@@ -69,25 +75,61 @@ def augment(rows: list[dict], rng: random.Random, target: int) -> list[dict]:
     while len(out) < target and attempts < target * 8:
         attempts += 1
         r = rng.choice(rows)
-        t = r["text"]
-        roll = rng.random()
-        if roll < 0.3:
-            t = re.sub(r"[#*|;:]+", " ", t)
-        elif roll < 0.6:
-            toks = t.split()
-            if len(toks) >= 3:
-                toks.pop(rng.randrange(len(toks)))
-            t = " ".join(toks)
-        elif roll < 0.85:
-            t = re.sub(r"\$\s?\d[\d,]*(?:\.\d+)?", lambda _: f"${rng.uniform(1, 999):.2f}", t)
-        else:
-            t = re.sub(r"\d{3,}", lambda m: str(rng.randint(10 ** (len(m.group()) - 1), 10 ** len(m.group()) - 1)), t)
-        t = re.sub(r"\s+", " ", t).strip()
+        t = perturb(r["text"], rng, strength=rng.choice([1, 2, 2]), train=True)
         if not t or t in seen:
             continue
         seen.add(t)
-        out.append({"text": t, "label": r["label"], "source": "augmented"})
+        out.append({"text": t, "label": r["label"], "source": source})
     return out
+
+
+async def _rephrase(spec: TaskSpec, rows: list[dict], usage: llm.Usage | None, emit: Emit) -> list[dict]:
+    """Kimi-K2-style rephrasing for the user's own rows: each row is rewritten twice in a different register
+    (another bank's descriptor format, a person's shorthand), then every rewrite is re-classified and kept only
+    when the model still reads the original label from it. Two varied tellings of a row beat two copies of it."""
+    rows = rows[:REPHRASE_MAX]
+    if not rows:
+        return []
+    model = llm.fast_model()
+    sem = asyncio.Semaphore(4)
+    labels = spec.labels
+
+    async def one(chunk: list[dict]) -> list[dict]:
+        numbered = "\n".join(f"{i + 1}. {r['text']}" for i, r in enumerate(chunk))
+        async with sem:
+            try:
+                out = await llm.complete_json(
+                    f"Task these rows belong to: {spec.description}\nInput format: {spec.input_description or 'free text'}\n"
+                    f"Rewrite each of the {len(chunk)} rows below in two other realistic styles (e.g. how a different bank feed, "
+                    "card processor, email client or person would write the same thing: abbreviations, truncation, other "
+                    "casing and separators, amount formats, extra processor codes). Keep every fact that decides its category; "
+                    "never change the merchant, vendor, intent or amounts beyond formatting.\n<rows>\n" + numbered + "\n</rows>\n"
+                    'Return {"rewrites": [[two strings for row 1], [two strings for row 2], ...]} with exactly one entry per row, in order.',
+                    model=model, max_tokens=4096, usage=usage, purpose="plan")
+                rewrites = out.get("rewrites") if isinstance(out, dict) else None
+                if not isinstance(rewrites, list) or len(rewrites) != len(chunk):
+                    return []
+            except Exception:
+                return []
+        cands = [{"text": t.strip(), "label": r["label"]} for r, rw in zip(chunk, rewrites) if isinstance(rw, list)
+                 for t in rw if isinstance(t, str) and 3 < len(t.strip()) < 600 and t.strip() != r["text"]]
+        if not cands:
+            return []
+        from ..trainers.prompted import classify_batch, default_instruction, render_program
+
+        system = render_program(spec, default_instruction(spec), [])
+        try:
+            preds = await classify_batch(system, [c["text"] for c in cands], labels, model, usage=usage)
+        except Exception:
+            return []
+        return [{**c, "source": "user-rephrased"} for c, pr in zip(cands, preds) if pr == c["label"]]
+
+    chunks = [rows[i:i + 20] for i in range(0, len(rows), 20)]
+    kept = [r for chunk in await asyncio.gather(*(one(c) for c in chunks)) for r in chunk]
+    asked = 2 * len(rows)
+    await emit("data", "log", f"rephraser · {len(kept)} of {asked} rewrites of your rows kept after re-labeling "
+                              f"({asked - len(kept)} drifted and were dropped)")
+    return kept
 
 
 def _stratified(rows: list[dict], n: int, rng: random.Random) -> tuple[list[dict], list[dict]]:
@@ -105,7 +147,7 @@ def _stratified(rows: list[dict], n: int, rng: random.Random) -> tuple[list[dict
 
 
 def _dedupe(groups: list[list[dict]]) -> tuple[list[list[dict]], int]:
-    """Earlier groups win collisions: real rows over clean generator rows over the noisy pool."""
+    """Earlier groups win collisions: real rows over unseen-pool rows over clean generator rows over the noisy pool."""
     seen: set[str] = set()
     out: list[list[dict]] = []
     dropped = 0
@@ -162,7 +204,7 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
         from . import teacher
 
         await emit("data", "log", f"teacher · {len(unlabeled_texts)} uploaded rows carry no label; asking "
-                                  f"{get_settings().agent_model} three ways and keeping the agreements")
+                                  f"{llm.pretty(llm.agent_model())} three ways and keeping the agreements")
         teacher_rows, teacher_stats = await teacher.label_rows(spec, unlabeled_texts, usage, examples=real)
         await emit("data", "log", f"teacher · kept {teacher_stats['kept']} of {teacher_stats['asked']} "
                                   f"({teacher_stats['dropped']} disagreements dropped) · ${teacher_stats['cost']:.3f} · "
@@ -170,17 +212,22 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
 
     pool: list[dict] = []
     clean: list[dict] = []
+    unseen: list[dict] = []
     noise_rate = None
     if spec.template:
         t = TEMPLATES[spec.template]
         seed = rng.randint(0, 10_000)
-        noisy = generate(t, PROCEDURAL_N, seed=seed)
-        truth = generate(t, PROCEDURAL_N, seed=seed, noise=False)
+        noisy = generate(t, PROCEDURAL_N, seed=seed, pool="train")
+        truth = generate(t, PROCEDURAL_N, seed=seed, noise=False, pool="train")
         noise_rate = round(sum(a["label"] != b["label"] for a, b in zip(noisy, truth)) / max(1, len(noisy)), 4)
         pool += [r for r in noisy if r["label"] in spec.labels]
-        clean += [r for r in generate(t, CLEAN_N, seed=seed + 1, noise=False) if r["label"] in spec.labels]
+        clean += [r for r in generate(t, CLEAN_N, seed=seed + 1, noise=False, pool="train") if r["label"] in spec.labels]
+        # The eval pool's merchants, vendors and phrasings exist nowhere in training: the new-merchant case production brings every week.
+        unseen += [{**r, "source": "procedural-unseen", "slice": "unseen"}
+                   for r in generate(t, UNSEEN_N, seed=seed + 2, noise=False, pool="eval") if r["label"] in spec.labels]
         await emit("data", "log", f"procedural engine · {len(pool)} training rows from the {t.name.lower()} generator "
-                                  f"({noise_rate:.1%} planted label noise, like a real ledger) and {len(clean)} clean rows for evaluation")
+                                  f"({noise_rate:.1%} planted label noise, like a real ledger), {len(clean)} clean rows for evaluation "
+                                  f"and {len(unseen)} rows built only from merchants and phrasings the training rows never contain")
 
     if llm.available():
         per_label = 40 if spec.template else 110
@@ -190,9 +237,9 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
         results = await asyncio.gather(*(_synth_label(spec, l, per_label, seeds_by[l] or real, usage, sem) for l in spec.labels))
         synth = [r for chunk in results for r in chunk]
         pool += synth
-        await emit("data", "log", f"synthesizer · {len(synth)} examples generated (${usage.cost:.3f} so far)")
+        await emit("data", "log", f"synthesizer · {len(synth)} examples generated (${(usage.cost if usage else 0.0):.3f} so far)")
 
-    (real, clean, pool, teacher_rows), dropped = _dedupe([real, clean, pool, teacher_rows])
+    (real, unseen, clean, pool, teacher_rows), dropped = _dedupe([real, unseen, clean, pool, teacher_rows])
     if dropped:
         await emit("data", "log", f"dedupe · removed {dropped} near-duplicates")
 
@@ -211,10 +258,15 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
             dev_n = min(DEV_CAP, max(2 * labels_n, len(rest) // 8), max(1, len(rest) // 4))
             dev, train = _stratified(rest, dev_n, rng)
     elif clean:
-        test, clean_rest = _stratified(clean, min(TEST_CAP, len(clean) * 2 // 3), rng)
+        n_unseen = min(len(unseen), int(TEST_CAP * UNSEEN_SHARE)) if unseen else 0
+        core, clean_rest = _stratified(clean, min(TEST_CAP - n_unseen, len(clean) * 2 // 3), rng)
+        unseen_test, _ = _stratified(unseen, n_unseen, rng) if n_unseen else ([], [])
+        test = core + unseen_test  # what is left of the unseen pool is discarded, never trained on
         dev, clean_rest = _stratified(clean_rest, min(DEV_CAP, len(clean_rest)), rng)
         train = real + pool + clean_rest
-        eval_source = "held-out synthetic, no planted noise (upload 30+ real examples for a stricter test)"
+        eval_source = ("held-out synthetic, no planted noise"
+                       + (f" · {len(unseen_test)} rows use merchants and phrasings never seen in training" if unseen_test else "")
+                       + " (upload 30+ real examples for a stricter test)")
         if real:
             notes.append(f"{n_real} real rows are too few to evaluate on; they train the model instead")
     else:
@@ -225,6 +277,12 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
         dev, train = _stratified(rest, dev_n, rng)
         eval_source = ("your real examples" if test and all(r["source"] == "user" for r in test)
                        else "held-out synthetic (upload real examples for a stricter test)")
+
+    # Robustness slice: noisy copies of core test rows. Scored next to the headline, never inside it.
+    perturbed = perturb_rows([r for r in test if r.get("slice", "core") == "core"], rng, min(PERTURBED_N, len(test)))
+    if perturbed:
+        test = test + perturbed
+        eval_source += f" · {len(perturbed)} perturbed copies scored separately"
 
     train += teacher_rows  # after the split: a teacher's mistakes must not become the test
 
@@ -239,15 +297,26 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
     if len(train) < 2 * labels_n:
         raise ValueError("Not enough training data. Upload more labeled examples or add an ANTHROPIC_API_KEY.")
 
+    # Rewrites of the user's rows in other registers, verified to still carry their label (needs a model key).
+    user_rows = [r for r in train if r["source"] == "user"]
+    if user_rows and llm.available():
+        try:
+            train += await _rephrase(spec, user_rows, usage, emit)
+        except Exception as e:  # a bonus, never the reason a lab fails
+            await emit("data", "log", f"rephraser · skipped ({e.__class__.__name__})")
+
     # a template's 2,400 rows must not drown the rows the user actually cares about
-    user_train = [r for r in train if r["source"] in ("user", "teacher")]  # the user's real inputs, either way labeled
+    user_train = [r for r in train if r["source"] in ("user", "teacher", "user-rephrased")]  # the user's real inputs, either way labeled
     if user_train and pool:
         share = len(user_train) / len(train)
         if share < USER_SHARE:
-            copies = int(USER_SHARE * len(train) / (1 - USER_SHARE)) - len(user_train)
-            if copies > 0:
-                train += [{**rng.choice(user_train), "source": "user-upsampled"} for _ in range(copies)]
-                await emit("data", "log", f"weighting · your {len(user_train)} rows repeated to be {USER_SHARE:.0%} of training ({copies} copies)")
+            need = int(USER_SHARE * len(train) / (1 - USER_SHARE)) - len(user_train)
+            if need > 0:
+                variants = augment(user_train, rng, need, source="user-variant")
+                copies = [{**rng.choice(user_train), "source": "user-upsampled"} for _ in range(need - len(variants))]
+                train += variants + copies
+                await emit("data", "log", f"weighting · your {len(user_train)} rows weighted up to {USER_SHARE:.0%} of training: "
+                                          f"{len(variants)} rewritten variants" + (f" and {len(copies)} repeats" if copies else ""))
 
     if len(train) < AUGMENT_BELOW:
         extra = augment(train, rng, target=min(AUGMENT_BELOW, 4 * len(train)) - len(train))
@@ -260,8 +329,10 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
     counts = Counter(r["label"] for r in train)
     if noise_rate is not None:
         notes.append(f"training rows carry about {noise_rate:.1%} planted label noise; evaluation rows carry none")
+    slices = dict(Counter(r.get("slice", "core") for r in test))
+    headline = sum(v for k, v in slices.items() if k != "perturbed")
     stats = {
-        "train": len(train), "dev": len(dev), "test": len(test),
+        "train": len(train), "dev": len(dev), "test": headline, "test_total": len(test), "slices": slices,
         "sources": dict(Counter(r["source"] for r in train + dev + test)),
         "label_counts": {l: counts.get(l, 0) for l in spec.labels},
         "eval_source": eval_source,
@@ -269,7 +340,7 @@ async def curate(spec: TaskSpec, seed_examples: list[dict], emit: Emit, usage: l
         "imbalance": round(max(counts.values()) / max(1, min(counts.values() or [1])), 2),
         "noise_rate": noise_rate, "ignored": ignored, "leak_removed": leaked, "notes": notes, "teacher": teacher_stats,
     }
-    await emit("data", "metric", f"dataset ready · {len(train)} train / {len(dev)} dev / {len(test)} test · eval on {eval_source}",
+    await emit("data", "metric", f"dataset ready · {len(train)} train / {len(dev)} dev / {headline} test · eval on {eval_source}",
                {"dataset": stats})
     return {"train": train, "dev": dev, "test": test, "stats": stats}
 

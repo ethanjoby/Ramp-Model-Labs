@@ -58,7 +58,7 @@ async def label_rows(spec: TaskSpec, texts: list[str], usage: llm.Usage | None, 
         chunk = asked[start:start + CHUNK]
         async with sem:
             try:
-                preds = await classify_batch(frames[fi], chunk, spec.labels, s.agent_model, usage=usage)
+                preds = await classify_batch(frames[fi], chunk, spec.labels, llm.agent_model(), usage=usage)
             except Exception:
                 preds = [None] * len(chunk)
         for j, p in enumerate(preds):
@@ -75,5 +75,5 @@ async def label_rows(spec: TaskSpec, texts: list[str], usage: llm.Usage | None, 
         if n >= need:
             kept.append({"text": text, "label": label, "source": "teacher", "agreement": round(n / len(frames), 2)})
     stats = {"asked": len(asked), "skipped": len(uniq) - len(asked), "kept": len(kept), "dropped": len(asked) - len(kept),
-             "cost": round((usage.cost if usage else 0.0) - before, 4), "model": s.agent_model, "framings": len(frames)}
+             "cost": round((usage.cost if usage else 0.0) - before, 4), "model": llm.agent_model(), "framings": len(frames)}
     return kept, stats

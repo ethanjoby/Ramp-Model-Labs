@@ -40,23 +40,37 @@ Everything works with no other keys: the procedural data engine and the local sp
 
 | Key | Unlocks |
 | --- | --- |
-| `torch` + `transformers` (installed by `uv sync`) | The local encoder fine-tunes: MiniLM-L6 (22M) and ModernBERT-base (150M, after a short masked-LM warm-up on your own rows); without them both candidates are listed as skipped |
-| `ANTHROPIC_API_KEY` | Planner for open-ended tasks, synthetic data, prompted candidates (zero-shot Haiku, optimized few-shot program), the frontier reference, the cascade's LLM level, the copilot's natural-language tool use |
-| Modal (`uv run modal token new && uv run modal deploy modal_app.py`, then `MODAL_ENABLED=true`) | LoRA fine-tune of Qwen3-1.7B on an L4 GPU (`MODAL_BASE_MODEL` to change it, `MODAL_HEAVY_MODEL` to add a second, e.g. `Qwen/Qwen3-4B-Instruct-2507`), plus serving for deployed adapters. `uv run modal run modal_app.py` is a smoke test that prints accuracy, timing and GPU cost (cents) |
+| `torch` + `transformers` (installed by `uv sync`) | The local language-model candidates: an embedding specialist (frozen bge-small + linear head), fine-tuned MiniLM-L6 (22M) and ModernBERT-base (150M, after a short masked-LM warm-up on your own rows), and Qwen3-0.6B with its top four blocks trained on the Mac's GPU (`LOCAL_LLM_MODEL=` to skip it; it adds about three minutes to a lab) |
+| `ANTHROPIC_API_KEY` | Planner for open-ended tasks, synthetic data, rephrased variants of your rows, teacher labels, prompted candidates (zero-shot Haiku, optimized few-shot program), the frontier reference, the cascade's LLM level, the copilot's natural-language tool use |
+| `TOGETHER_API_KEY` | Open-weight frontier models as zero-shot competitors, priced from the catalog list with thinking switched off: DeepSeek V4.1 Flash, Kimi K3.1 Pro, MiniMax M3.1 Flash, GLM 5.3 Flash and Qwen3.5 9B (`TOGETHER_MODELS` to change the set). With no Anthropic key, DeepSeek V4.1 Flash runs the agents and Kimi K3.1 Pro is the yardstick |
+| Modal (`uv run modal token new && uv run modal deploy modal_app.py`, then `MODAL_ENABLED=true`) | LoRA fine-tunes on an L4 GPU: Qwen3-1.7B by default, `MODAL_MODELS=Qwen/Qwen3-1.7B,Qwen/Qwen3-4B-Instruct-2507` for a roster, plus serving for deployed adapters. Inference scores every label's likelihood instead of generating text, so there are no off-list answers and every prediction carries a confidence. `uv run modal run modal_app.py` is a smoke test that prints accuracy, calibration, timing and GPU cost (cents) |
 
 ## What a lab does
 
 1. **Planner** turns the prompt into a spec: labels, target accuracy, latency budget, what to optimize for. Uploaded examples define the labels when they exist.
-2. **Curator** builds the dataset. Real examples are reserved for evaluation first, then the procedural generators and Claude fill in training data across several styles. Small uploads get label-preserving variants of their training rows (never of test or dev rows). Near-duplicates are dropped, splits are stratified.
+2. **Curator** builds the dataset. Real examples are reserved for evaluation first, then the procedural generators and the LLM fill in training data across several styles. Every generator keeps two disjoint pools of merchants, vendors, parties and phrasings: training rows only ever use the train pool, and an *unseen* evaluation slice is built from the other one, so the score includes merchants the model has never met, the way production does every week. Uploaded rows are weighted up with rewritten variants (truncated names, other casings and separators, typos, amount formats, processor prefixes), and with a model key each row is also rephrased twice in another register and kept only if the model still reads the same label from the rewrite (the Kimi K2 finding: rephrased data beats repeating the same tokens). Near-duplicates are dropped, splits are stratified, and nothing that mirrors a held-out row once digits are folded may train.
 3. **Trainer** runs every available strategy in parallel against the same splits:
-   - local specialists: Naive Bayes, tuned linear, SVM, tiny neural net
+   - local specialists: Naive Bayes, tuned linear, SVM, tiny neural net, and a committee that soft-votes calibrated versions of them
+   - embedding specialist: frozen bge-small sentence embeddings (33M) with a logistic-regression head. Trains in seconds, the pickle is 20 KB, and because the encoder never moves it generalizes from meaning rather than memorized merchant strings
    - real language models, fine-tuned locally: MiniLM-L6 (22M parameters) and ModernBERT-base (150M) with a new classification head, trained end to end on the lab's split on Apple-silicon GPU or CPU (10-20 s and 1-3 min), evaluated and served on CPU (about 7 ms and 100 ms a call). ModernBERT first spends 45 s on a masked-LM warm-up over the task's own inputs, the laptop-sized version of task-adaptive continued pretraining. DeBERTa-v3 was tried and dropped: it produces NaN losses on Apple GPUs
+   - a small decoder LLM, fine-tuned locally: Qwen3-0.6B with its top four blocks and a classification head trained on the Mac's GPU (about 2.5 min, 63M trainable parameters); only those weights are saved, a 125 MB delta over the base. Slower to serve (~160 ms) but it brings a language model's prior about what a merchant *is*
    - cascade: learned rules → small model → LLM → human review
-   - prompted: zero-shot Haiku, optimized few-shot prompt program
-   - fine-tuned on a GPU: LoRA (rank 8, every linear layer) on Qwen3-1.7B on a Modal L4, with label-only targets and thinking switched off, because chain-of-thought hurts models under ~10B parameters; serving cost is priced from the batched throughput measured in the same container, and labelled an estimate
-   - frontier reference (Sonnet), used as the yardstick, never deployed
-4. **Judge** keeps candidates that meet the bar, takes the cheapest within tolerance of the best, and explains the pick. Accuracy, latency and cost per 1k calls are all measured, not estimated, except the frontier cost when no key is present.
+   - prompted: zero-shot Haiku, an optimized few-shot prompt program, and with a Together key the open-weight frontier models (DeepSeek V4.1 Flash, Kimi K3.1 Pro, MiniMax M3.1 Flash, GLM 5.3 Flash, Qwen3.5 9B) scored one request per row with thinking off, the shape the endpoint would serve
+   - fine-tuned on a GPU: LoRA (rank 8, every linear layer, NEFTune noise) on Qwen3-1.7B and any other bases in `MODAL_MODELS` on a Modal L4, with label-only targets and thinking switched off, because chain-of-thought hurts models under ~10B parameters; serving cost is priced from the batched throughput measured in the same container, and labelled an estimate
+   - distillation: when the most accurate candidate is an expensive one (a prompted frontier model, a GPU adapter, the 150M encoder) and leads the cheapest local tier by two points or more at three times the cost, it labels 1,500 unlabeled rows and a MiniLM student trains on the original data plus those labels. That is DeepSeek-R1's small-model recipe (fine-tune on the big model's outputs rather than RL) applied to a classifier; the student is scored on the same held-out set as everyone else, which the teacher never touched
+   - frontier reference (Sonnet, or Kimi K3.1 Pro without an Anthropic key), used as the yardstick, never deployed
+4. **Judge** keeps candidates that meet the bar, takes the cheapest whose confidence interval overlaps the best one's, breaks ties by how well a model keeps its answers under noisy copies of the same rows, and explains the pick. Accuracy, latency and cost per 1k calls are all measured, not estimated, except the frontier cost when no key is present.
 5. **Deployer** publishes `POST /v1/models/{slug}/predict`. Corrections made in the playground become real labeled data; retraining re-runs the lab with them.
+
+### Evaluation
+
+A held-out score that comes from the same generator as the training rows cannot separate models: on the old split every candidate scored 95-97%. The test set now has three slices, each reported on its own:
+
+- **core**: the plain held-out draw, with no planted label noise
+- **unseen**: rows built only from the eval pool of merchants, vendors, parties and phrasings, none of which appears in any training row. The headline accuracy covers core + unseen
+- **perturbed**: noisy copies of core rows (casing, truncated names, typos, amount formats, processor prefixes, dropped memos). They never count toward the headline; *robustness* is the share of copies still answered right when the original was
+
+Candidates that output a confidence also get **calibration** numbers: expected calibration error, and the **automation rate at 95%**, the share of rows the model can decide on its own while staying at least 95% accurate on them, with the confidence floor that achieves it. That is the number a review queue runs on: two models with the same accuracy can automate very different shares of traffic.
 
 The homepage replays one real run from its stored events (`frontend/src/components/marketing/demo-lab.json`), through the same reducer the product uses.
 
@@ -79,6 +93,10 @@ API: `POST /api/workflows` (multipart `file` or `text`, optional `prompt`, `depl
 ## Where the ideas came from
 
 - `mshumer/gpt-llm-trainer`: describe the task, synthesize pairs, fine-tune a small model. That is the curator plus the LoRA trainer; the held-out evaluation on real examples is the defense against synthetic blind spots.
+- Kimi K2 technical report (arXiv 2507.20534): rephrasing high-value data in several styles, with a fidelity check, beats training more epochs on the same tokens. That is the rephraser and the variant-based weighting of uploaded rows, instead of exact copies.
+- DeepSeek-R1 (arXiv 2501.12948, §4.2 and §G.1): small models gain more from being fine-tuned on a strong model's outputs than from RL of their own. That is the distillation stage.
+- NEFTune (Jain et al., 2023): noisy embeddings during fine-tuning, a free regularizer for the LoRA recipe. Selective prediction (Geifman & El-Yaniv, 2017) is where the automation-rate metric comes from.
+- Together AI's catalog supplies the open-weight competitors and their list prices; reasoning is switched off per their API so the measured cost is the answer alone.
 - `stanfordnlp/dspy`: prompt optimization as a first-class candidate, so "prompting is enough" competes on equal footing with fine-tuning.
 - Pioneer Agent and AutoML-Agent: a state machine of task analysis, data curation, training and evaluation driven only by the task description. That is the orchestrator.
 - BARRED: synthetic data from a task description plus a few examples.
@@ -102,9 +120,10 @@ Google sign-in with server-side ID-token verification, signed httpOnly session c
 ## Layout
 
 ```
-backend/app/agents      planner, data curator, orchestrator, judge, copilot
-backend/app/trainers    classical, cascade, prompted, finetuned strategies
-backend/app/datasets    procedural generators for the five financial workflows
+backend/app/agents      planner, data curator, teacher, distillation, orchestrator, judge, copilot
+backend/app/trainers    classical + committee, embedding, encoder/decoder fine-tunes, cascade, prompted, LoRA strategies
+backend/app/datasets    procedural generators (train/eval entity pools) and label-preserving perturbations
+backend/app/llm.py      one client for Anthropic and Together, with per-model pricing
 backend/app/firebase.py Google sign-in token verification
 backend/modal_app.py    GPU fine-tune + serving
 frontend/src/app        marketing site, auth, the /app product

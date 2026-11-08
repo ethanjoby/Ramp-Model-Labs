@@ -101,7 +101,7 @@ def capabilities(user: User = Depends(current_user)):
     from ..trainers.registry import strategies
 
     return {
-        "llm": llm.available(), "modal": any(st.key == "lora_qwen" and st.available()[0] for st in strategies()),
+        "llm": llm.available(), "modal": any(getattr(st, "uses_gpu", None) == "remote" and st.available()[0] for st in strategies()),
         "local_lm": any(st.key == "finetuned_encoder" and st.available()[0] for st in strategies()),
         "strategies": [{"key": st.key, "name": st.display_name, "family": st.family, "blurb": st.blurb,
                         "available": st.available()[0], "reason": st.available()[1]} for st in strategies()],

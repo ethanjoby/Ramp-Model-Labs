@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { AgentFeed, Confusion, DatasetPanel, ErrorList, Leaderboard, ParetoChart, SpecSummary, StageRail, WinnerCard } from "@/components/lab/parts";
+import { AgentFeed, Confusion, DatasetPanel, ErrorList, Leaderboard, ParetoChart, Scorecard, SpecSummary, StageRail, WinnerCard } from "@/components/lab/parts";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/bits";
 import { api } from "@/lib/api";
@@ -79,7 +79,8 @@ export function LabView() {
         <div className="min-w-0 space-y-6">
           <Section title="Candidates">
             <div className="-mx-4 -my-2">
-              <Leaderboard candidates={rows} target={spec?.target_accuracy} onSelect={setPicked} selected={selectedKey} />
+              <Leaderboard candidates={rows} target={spec?.target_accuracy} onSelect={setPicked} selected={selectedKey}
+                evalSource={lab?.eval_source ?? dataset?.eval_source} nEval={lab?.n_eval ?? dataset?.test} />
             </div>
           </Section>
           {rows.some((c) => c.status === "done") && (
@@ -90,6 +91,7 @@ export function LabView() {
           {selected?.metrics.confusion && spec && (
             <Section title={`${selected.name}: where it goes wrong`}>
               {selected.metrics.notes && <p className="mb-4 text-[12.5px] leading-relaxed text-muted">{selected.metrics.notes}</p>}
+              <Scorecard metrics={selected.metrics} className="mb-4" />
               <Confusion labels={spec.labels} matrix={selected.metrics.confusion} />
               <div className="mt-5 border-t border-line-soft pt-3">
                 <ErrorList errors={selected.metrics.errors ?? []} />

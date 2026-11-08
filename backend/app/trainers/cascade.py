@@ -104,7 +104,7 @@ class Cascade(Strategy):
             return pipe, rules, threshold, t.s
 
         pipe, rules, threshold, train_s = await asyncio.to_thread(train)
-        model = get_settings().fast_model if llm.available() else None
+        model = llm.fast_model() if llm.available() else None
         system = render_program(ctx.spec, default_instruction(ctx.spec), []) if model else None
         cascade = CascadeModel(rules, pipe, threshold, system, model, ctx.spec.labels)
 

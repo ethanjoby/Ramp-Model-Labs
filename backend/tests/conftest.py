@@ -10,7 +10,9 @@ os.environ["SECRET_KEY"] = "test-secret-key-not-for-production"
 os.environ["FIREBASE_PROJECT_ID"] = "rml-test"
 os.environ["FIREBASE_AUTH_EMULATOR_HOST"] = "127.0.0.1:1"  # unsigned-token path; nothing is contacted
 os.environ["ANTHROPIC_API_KEY"] = ""
+os.environ["TOGETHER_API_KEY"] = ""
 os.environ["MODAL_ENABLED"] = "false"
+os.environ["LOCAL_LLM_MODEL"] = ""  # the 0.6B local LLM takes minutes per lab; it has its own opt-in test
 
 import jwt  # noqa: E402
 import pytest  # noqa: E402

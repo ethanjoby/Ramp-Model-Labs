@@ -21,10 +21,15 @@ def ctx(tmp_path, n=480):
     return LabContext("lab_enc", spec, rows[:n], rows[n:n + 60], rows[n + 60:], emit, str(tmp_path))
 
 
-def test_registry_has_two_local_encoders_serialized_on_the_gpu():
+def test_registry_has_the_local_encoders_serialized_on_the_gpu():
     enc = [st for st in strategies() if isinstance(st, EncoderFinetune)]
-    assert [st.key for st in enc] == ["finetuned_encoder", "finetuned_modernbert"]
+    assert [st.key for st in enc][:2] == ["finetuned_encoder", "finetuned_modernbert"]
     assert all(st.uses_gpu == "local" for st in enc) and enc[1].tacp and not enc[0].tacp
+    # the local decoder LLM joins the roster when configured (the test environment leaves it off)
+    from app.trainers.registry import local_llm
+
+    q = local_llm("Qwen/Qwen3-0.6B")
+    assert q.key == "finetuned_local_llm" and q.unfreeze_last == 4 and q.max_rows == 1500 and "Qwen3-0.6B" in q.display_name
 
 
 @pytest.mark.parametrize("strategy", [

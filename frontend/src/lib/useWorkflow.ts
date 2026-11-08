@@ -35,7 +35,18 @@ export function useWorkflow(id: string | null) {
   const [wf, setWf] = useState<Workflow | null>(null);
   const [events, setEvents] = useState<LabEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [trackedId, setTrackedId] = useState(id);
+  // Reset while rendering when the workflow changes, so a client-side hop between two workflows never keeps the first one's feed.
+  if (id !== trackedId) {
+    setTrackedId(id);
+    setWf(null);
+    setEvents([]);
+    setError(null);
+  }
+  // The highest seq we hold, kept in step with the list rather than zeroed by the stream effect: a replay (reconnect,
+  // or a dev hot reload re-running the effect) resends history from 1, and the list is the only record of what is already shown.
   const lastSeq = useRef(0);
+  useEffect(() => { lastSeq.current = events.length ? events[events.length - 1].seq : 0; }, [events]);
 
   const refresh = useCallback(async () => {
     if (!id) return null;
@@ -48,7 +59,6 @@ export function useWorkflow(id: string | null) {
     if (!id) return;
     let es: EventSource | null = null;
     let closed = false;
-    lastSeq.current = 0;
     api<Workflow>(`/api/workflows/${id}`).then((w) => {
       if (closed) return;
       setWf(w);
@@ -57,7 +67,7 @@ export function useWorkflow(id: string | null) {
         const ev = JSON.parse((m as MessageEvent).data) as LabEvent;
         if (ev.seq <= lastSeq.current) return;
         lastSeq.current = ev.seq;
-        setEvents((list) => [...list, ev]);
+        setEvents((list) => (list.length && list[list.length - 1].seq >= ev.seq ? list : [...list, ev]));
         const stage = ev.data?.stage;
         if (stage === "classify" || stage === "model" || stage === "build" || stage === "done" || ev.kind === "error") void refresh();
         if (stage === "done" || stage === "failed" || ev.kind === "error") es?.close();

@@ -71,14 +71,10 @@ async def predict(c: Candidate, texts: list[str]) -> tuple[list[dict], float]:
             out.append({"label": str(l), "confidence": round(conf[i], 4) if conf[i] is not None else None,
                         "top": top[i] if top else None})
     elif "adapter" in obj:
-        import modal
+        from .trainers.finetuned import serve
 
-        from .trainers.prompted import _normalize
-
-        fn = modal.Function.from_name(get_settings().modal_app_name, "predict")
-        preds = await fn.remote.aio(obj["adapter"], obj["instruction"], obj["labels"], texts,
-                                    base_model=obj.get("base_model") or get_settings().modal_base_model)
-        out = [{"label": _normalize(p, obj["labels"]), "confidence": None, "top": None} for p in preds]
+        labels, confs = await serve(obj, texts)
+        out = [{"label": l, "confidence": (round(c, 4) if c is not None else None), "top": None} for l, c in zip(labels, confs)]
     else:
         from .trainers.prompted import classify_one
 

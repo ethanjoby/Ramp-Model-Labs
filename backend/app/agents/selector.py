@@ -35,11 +35,12 @@ def pareto(cands: list[dict]) -> list[str]:
 
 
 def frontier_cost_per_1k(spec: TaskSpec, test: list[dict]) -> float:
-    """What Sonnet 5.5 would cost per 1k calls on this traffic, with the instruction served from the prompt cache."""
+    """What the frontier yardstick would cost per 1k calls on this traffic, with the instruction served from the prompt cache."""
+    model = llm.reference_model()
     avg_chars = sum(len(r["text"]) for r in test) / max(1, len(test))
     prompt_chars = 400 + sum(len(l) + 40 for l in spec.labels)
     fresh_tok, cached_tok = avg_chars / 3.6, prompt_chars / 3.6
-    per_call = llm.cost_of("claude-sonnet-5-5", int(fresh_tok), 8) + cached_tok * SONNET_CACHE_READ_PER_MTOK / 1_000_000
+    per_call = llm.cost_of(model, int(fresh_tok), 8) + cached_tok * llm.cached_input_price(model) / 1_000_000
     return round(per_call * 1000, 4)
 
 
@@ -79,7 +80,8 @@ def choose(spec: TaskSpec, cands: list[dict], imbalance: float | None = None) ->
         # Costs within 2x of the cheapest are effectively tied: take the most accurate, then the smallest.
         floor = min(c["metrics"]["cost_per_1k"] for c in near)
         near = [c for c in near if c["metrics"]["cost_per_1k"] <= max(floor * 2, floor + 1e-6)]
-        key = lambda c: (-c["metrics"]["accuracy"], c["metrics"].get("size_kb") or 0)  # noqa: E731
+        # Then the one that keeps its answers under noisy copies of the same rows, then the smallest.
+        key = lambda c: (-c["metrics"]["accuracy"], -(c["metrics"].get("robust_accuracy") or 0), c["metrics"].get("size_kb") or 0)  # noqa: E731
     winner = sorted(near, key=key)[0]
     winner["meets_bar"] = winner in meets
     n = winner["metrics"].get("n_eval", 0)

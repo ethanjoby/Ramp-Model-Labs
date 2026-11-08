@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import clsx from "clsx";
 import { ArrowLeft, Check, Copy, RefreshCw, ShieldAlert, Upload } from "lucide-react";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/Button";
@@ -136,11 +137,16 @@ export function ModelView() {
         </div>
       )}
 
-      <Card className="mt-6 grid grid-cols-2 gap-6 p-5 md:grid-cols-5">
-        <Stat label="Held-out accuracy" value={pct(dep.metrics.accuracy)} hint={evalRows(dep.eval_source, dep.n_eval) ? `on ${evalRows(dep.eval_source, dep.n_eval)}` : undefined} />
-        <Stat label="Cost / 1k" value={usd(dep.metrics.cost_per_1k)} />
+      <Card className={clsx("mt-6 grid grid-cols-2 gap-6 p-5", dep.metrics.auto_rate_at_95 != null ? "md:grid-cols-3 lg:grid-cols-6" : "md:grid-cols-5")}>
+        <Stat label="Held-out accuracy" value={pct(dep.metrics.accuracy)}
+          hint={[evalRows(dep.eval_source, dep.n_eval) ? `on ${evalRows(dep.eval_source, dep.n_eval)}` : "", dep.metrics.unseen_accuracy != null ? `unseen ${pct(dep.metrics.unseen_accuracy)}` : ""].filter(Boolean).join(" · ") || undefined} />
+        <Stat label="Cost / 1k" value={usd(dep.metrics.cost_per_1k)} hint={dep.metrics.cost_estimated ? "estimated from measured throughput" : undefined} />
         <Stat label="Cheaper than frontier" value={<span title={savingsTitle(dep.savings)}>{savingsLabel(dep.savings)}</span>} hint={dep.savings?.frontier_measured ? "measured" : "list-price estimate"} />
         <Stat label="Latency p50" value={ms(dep.metrics.latency_p50_ms)} hint={dep.metrics.size_kb ? `model ${size(dep.metrics.size_kb)}` : undefined} />
+        {dep.metrics.auto_rate_at_95 != null && (
+          <Stat label="Automation at 95%" value={<span title="Share of rows the model can decide alone while staying at least 95% accurate on them; the rest go to review">{pct(dep.metrics.auto_rate_at_95, 0)}</span>}
+            hint={dep.metrics.confidence_floor_95 != null ? `confidence floor ${dep.metrics.confidence_floor_95.toFixed(2)}` : undefined} />
+        )}
         <Stat label="Requests served" value={num(dep.requests)} hint={dep.avg_latency_ms != null ? `avg batch ${ms(dep.avg_latency_ms)}` : undefined} />
       </Card>
 

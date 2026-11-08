@@ -1,19 +1,38 @@
+/** One held-out slice: "core" is the plain draw, "unseen" uses entities and phrasings kept out of training,
+ *  "perturbed" is noisy copies of core rows (casing, truncation, typos, amount formats, POS prefixes). */
+export type SliceName = "core" | "unseen" | "perturbed";
+export type SliceScore = { accuracy: number; n: number };
+
 export type Metrics = {
   accuracy: number;
+  /** 95% Wilson interval for the headline accuracy. */
+  accuracy_ci?: [number, number];
   macro_f1: number;
   per_label_f1: Record<string, number>;
   confusion: number[][];
+  /** Headline accuracy and n_eval cover core + unseen; perturbed copies are reported here only. */
+  slices?: Partial<Record<SliceName, SliceScore>>;
+  unseen_accuracy?: number | null;
+  /** Of the perturbed copies whose original was answered right, the share still answered right. */
+  robust_accuracy?: number | null;
+  /** Calibration, present only for candidates that output confidences. */
+  ece?: number | null;
+  auto_rate_at_95?: number | null;
+  confidence_floor_95?: number | null;
   latency_p50_ms: number;
   latency_p95_ms: number;
   cost_per_1k: number;
+  cost_estimated?: boolean;
   train_cost: number;
   train_seconds: number;
   size_kb: number | null;
   n_eval: number;
   notes: string;
-  errors: { text: string; expected: string; predicted: string }[];
+  errors: { text: string; expected: string; predicted: string; slice?: SliceName }[];
   search?: { C: number; dev_acc: number }[];
   instruction?: string;
+  /** A distilled student names the model that labeled its extra training rows. */
+  teacher?: string;
   skip_reason?: string;
   error?: string;
 };
@@ -60,6 +79,8 @@ export type Dataset = {
   eval_source: string;
   samples: { text: string; label: string; source: string }[];
   imbalance: number;
+  /** Row counts per held-out slice (core, unseen, perturbed). */
+  slices?: Record<string, number>;
 };
 
 export type LabResult = {

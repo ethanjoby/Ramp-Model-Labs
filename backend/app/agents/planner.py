@@ -86,7 +86,7 @@ async def _plan_with_llm(prompt: str, seed_labels: list[str], usage: llm.Usage) 
     for attempt in range(2):
         try:
             out = await llm.complete_json(ask if attempt == 0 else ask + "\n\nYour previous answer was not valid JSON with the required fields. Return only the JSON object.",
-                                          model=get_settings().agent_model, max_tokens=4096, usage=usage, purpose="plan")
+                                          model=llm.agent_model(), max_tokens=4096, usage=usage, purpose="plan")
             return PlanOut.model_validate(out if isinstance(out, dict) else {})
         except (ValidationError, ValueError, TypeError) as e:
             last = e

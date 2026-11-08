@@ -17,14 +17,15 @@ from ..events import bus
 from ..trainers.base import LabContext, TaskSpec, score
 from ..trainers.registry import strategies
 from . import data as data_agent
-from . import planner, selector
+from . import distill, planner, selector
+from ..config import get_settings
 
 # Process-wide, so ten labs at once share the machine instead of each assuming it is alone.
 _CPU = asyncio.Semaphore(max(2, (os.cpu_count() or 4) // 2))
 _LLM = asyncio.Semaphore(6)
 _GPU = asyncio.Semaphore(1)  # one local-GPU trainer at a time: three encoders at once would thrash 16 GB of unified memory
 _LAB_SLOTS = asyncio.Semaphore(3)
-CANDIDATE_TIMEOUT_S = {"finetuned": 25 * 60}
+CANDIDATE_TIMEOUT_S = {"finetuned": 40 * 60}  # a 16B base downloads ~32 GB into the cache volume on its first run
 DEFAULT_TIMEOUT_S = 20 * 60
 _running: dict[str, asyncio.Task] = {}
 
@@ -115,7 +116,7 @@ async def run_lab(lab_id: str) -> None:
 
             async def run_one(st):
                 nonlocal spend
-                sem = _CPU if st.family == "classical" else _GPU if getattr(st, "uses_gpu", None) == "local" else _LLM
+                sem = _GPU if getattr(st, "uses_gpu", None) == "local" else _CPU if st.family == "classical" else _LLM
                 cid = cand_ids[st.key]
                 async with sem:
                     await emit("trainer", "candidate", f"training {st.display_name}", {"key": st.key, "status": "running"})
@@ -147,6 +148,45 @@ async def run_lab(lab_id: str) -> None:
                                    {"key": st.key, "status": "failed"})
 
             await asyncio.gather(*(run_one(st) for st in strats if st.available()[0]))
+
+            # 3a. distillation: the strongest expensive candidate labels unlabeled rows for the cheapest local one
+            if get_settings().distill:
+                async def on_start(st, teacher):
+                    with Session(engine) as s:
+                        c = Candidate(lab_id=lab_id, strategy=st.key, display_name=st.display_name, family="finetuned", status="running")
+                        s.add(c); s.commit(); cid = c.id
+                    await emit("trainer", "candidate", f"training {st.display_name}",
+                               {"key": st.key, "status": "running", "name": st.display_name, "family": "finetuned", "blurb": st.blurb})
+                    return cid
+
+                async def log(msg: str):
+                    await emit("trainer", "log", msg)
+
+                student_row = None
+                try:
+                    student_row = await asyncio.wait_for(distill.run(ctx, results, _GPU, usage, on_start, log), timeout=CANDIDATE_TIMEOUT_S["finetuned"])
+                except Exception as e:
+                    traceback.print_exc()
+                    await emit("trainer", "log", f"distillation · failed ({str(e)[:120]})")
+                    with Session(engine) as s:
+                        for c in s.exec(select(Candidate).where(Candidate.lab_id == lab_id, Candidate.strategy.in_([distill.STUDENT_KEY, "distilled_linear"]),
+                                                                Candidate.status == "running")).all():
+                            c.status, c.metrics = "failed", {"error": str(e)[:300]}
+                            s.add(c)
+                        s.commit()
+                if student_row:
+                    st = student_row.pop("strategy")
+                    by_key[st.key] = st
+                    spend += student_row.pop("spend", 0.0)
+                    m = student_row["metrics"]
+                    with Session(engine) as s:
+                        c = s.get(Candidate, student_row["id"])
+                        c.status, c.metrics, c.artifact_path = "done", m, student_row["artifact_path"]
+                        s.add(c); s.commit()
+                    results.append(student_row)
+                    await emit("evaluator", "candidate",
+                               f"{st.display_name} · acc {m['accuracy']:.1%} · f1 {m['macro_f1']:.3f} · ${m['cost_per_1k']:.5f}/1k · p50 {m['latency_p50_ms']:.1f}ms",
+                               {"key": st.key, "status": "done", "metrics": m, "name": st.display_name, "family": "finetuned"})
 
             # 3b. one serial benchmark pass: latency sampled while siblings trained is noise, not a measurement
             for r in results:

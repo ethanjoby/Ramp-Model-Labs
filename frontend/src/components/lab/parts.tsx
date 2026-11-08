@@ -5,9 +5,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { Check, Crown, Minus, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge, FAMILY_LABEL, FamilyDot, Spinner } from "@/components/ui/bits";
-import { accuracyBasis, evalRows, humanLabel, ms, num, pct, savingsLabel, savingsTitle, size, usd } from "@/lib/format";
+import { evalRows, humanLabel, ms, num, pct, savingsLabel, savingsTitle, size, usd } from "@/lib/format";
 import { EASE, EASE_OUT } from "@/lib/motion";
-import type { CandidateRow, Dataset, LabEvent, LabResult, Spec } from "@/lib/types";
+import type { CandidateRow, Dataset, LabEvent, LabResult, Metrics, Spec } from "@/lib/types";
 import { STAGES, type LabState } from "@/lib/useLab";
 
 /* ------------------------------------------------------------- stage rail */
@@ -103,6 +103,60 @@ export function AgentFeed({ events, live, className }: { events: LabEvent[]; liv
   );
 }
 
+/* ------------------------------------------------------------- slices + calibration */
+
+export const UNSEEN_TITLE = "Accuracy on merchants, vendors and phrasings never seen in training";
+export const ROBUST_TITLE = "Of the noisy copies (casing, truncation, typos, amount formats, POS prefixes) whose original was answered right, the share still answered right";
+const SLICE_LABEL: Record<string, string> = { core: "core", unseen: "unseen", perturbed: "perturbed" };
+const SLICE_TITLE: Record<string, string> = {
+  core: "The plain held-out draw",
+  unseen: UNSEEN_TITLE,
+  perturbed: "Noisy copies of core rows; not part of the headline accuracy",
+};
+
+/** Headline accuracy with its interval, then every held-out slice, robustness and calibration a candidate has. */
+export function Scorecard({ metrics, className }: { metrics: Partial<Metrics>; className?: string }) {
+  const m = metrics;
+  const slices = Object.entries(m.slices ?? {}).filter(([, v]) => v && v.n > 0) as [string, { accuracy: number; n: number }][];
+  const hasCal = m.ece != null;
+  if (!slices.length && m.robust_accuracy == null && !hasCal && !m.accuracy_ci && !m.teacher) return null;
+  const ci = m.accuracy_ci;
+  return (
+    <div className={clsx("rounded-xl border border-line-soft bg-paper/60 px-3.5 py-3 text-[12.5px]", className)}>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        {m.accuracy != null && (
+          <Cell label="held-out" value={pct(m.accuracy)} sub={ci ? `${pct(ci[0], 0)}–${pct(ci[1], 0)}` : m.n_eval ? `n ${num(m.n_eval)}` : undefined}
+            title={ci ? "95% interval: on a test set this size, scores inside it are ties" : undefined} />
+        )}
+        {slices.map(([k, v]) => (
+          <Cell key={k} label={SLICE_LABEL[k] ?? k} value={pct(v.accuracy)} sub={`n ${num(v.n)}`} title={SLICE_TITLE[k]} muted={k === "perturbed"} />
+        ))}
+        {m.robust_accuracy != null && <Cell label="robust" value={pct(m.robust_accuracy)} title={ROBUST_TITLE} />}
+        {m.teacher && <Badge tone="spring" className="ml-auto">student of {m.teacher}</Badge>}
+      </div>
+      {hasCal && (
+        <p className="tnum mt-2.5 border-t border-line-soft pt-2.5 text-[12px] text-muted" title="Expected calibration error: how far 'I am 90% sure' is from being right 90% of the time. Lower is better.">
+          ECE {m.ece!.toFixed(3)}
+          {m.auto_rate_at_95 != null && (
+            <> · automates <span className="text-ink">{pct(m.auto_rate_at_95, 0)}</span> of rows at ≥95% accuracy
+              {m.confidence_floor_95 != null && <> (confidence ≥ {m.confidence_floor_95.toFixed(2)})</>}</>
+          )}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Cell({ label, value, sub, title, muted }: { label: string; value: string; sub?: string; title?: string; muted?: boolean }) {
+  return (
+    <div title={title} className={clsx("flex items-baseline gap-1.5", muted && "text-ink/60")}>
+      <span className="text-[11.5px] text-muted">{label}</span>
+      <span className="tnum font-mono text-[13px]">{value}</span>
+      {sub && <span className="tnum font-mono text-[11px] text-ink/45">{sub}</span>}
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------- leaderboard */
 
 function statusIcon(c: CandidateRow) {
@@ -127,15 +181,20 @@ export function Leaderboard({ candidates, target, onSelect, selected, compact = 
   const accs = rows.map((r) => r.metrics.accuracy ?? 0).filter(Boolean);
   const lo = Math.max(0, Math.min(...accs, target ?? 1) - 0.08);
   const basis = evalRows(evalSource, nEval);
+  // The slice columns appear only once a lab has scored them; older labs and the compact card keep the four-column table.
+  const showUnseen = !compact && rows.some((r) => r.metrics.unseen_accuracy != null);
+  const showRobust = !compact && rows.some((r) => r.metrics.robust_accuracy != null);
   return (
     <div className="overflow-x-auto scroll-thin">
-      <table data-testid="leaderboard" className="w-full min-w-[460px] text-left text-[13px]">
+      <table data-testid="leaderboard" className={clsx("w-full text-left text-[13px]", showUnseen || showRobust ? "min-w-[560px]" : "min-w-[460px]")}>
         <thead>
           <tr className="text-[11.5px] text-muted">
             <th className="py-2 pl-3 font-normal">Candidate</th>
-            <th className="w-[34%] py-2 font-normal">Accuracy{basis && <span className="text-ink/45"> · {basis}</span>}</th>
-            <th className="py-2 pl-5 text-right font-normal">p50</th>
-            <th className="py-2 pl-5 pr-3 text-right font-normal">Cost / 1k</th>
+            <th className="w-[30%] py-2 font-normal">Accuracy{basis && <span className="text-ink/45"> · {basis}</span>}</th>
+            {showUnseen && <th className="py-2 pl-4 text-right font-normal" title={UNSEEN_TITLE}><abbr className="no-underline" title={UNSEEN_TITLE}>Unseen</abbr></th>}
+            {showRobust && <th className="py-2 pl-4 text-right font-normal" title={ROBUST_TITLE}><abbr className="no-underline" title={ROBUST_TITLE}>Robust</abbr></th>}
+            <th className="py-2 pl-4 text-right font-normal">p50</th>
+            <th className="py-2 pl-4 pr-3 text-right font-normal">Cost / 1k</th>
           </tr>
         </thead>
         <tbody>
@@ -199,8 +258,20 @@ export function Leaderboard({ candidates, target, onSelect, selected, compact = 
                       <div className="skeleton h-1.5 w-full rounded-full" />
                     ) : null}
                   </td>
-                  <td className="tnum py-2.5 pl-5 text-right font-mono text-[12.5px]">{ms(c.metrics.latency_p50_ms)}</td>
-                  <td className="tnum py-2.5 pl-5 pr-3 text-right font-mono text-[12.5px]">{usd(c.metrics.cost_per_1k)}</td>
+                  {showUnseen && (
+                    <td className="tnum py-2.5 pl-4 text-right font-mono text-[12.5px]" title={UNSEEN_TITLE}>
+                      {c.metrics.unseen_accuracy != null ? pct(c.metrics.unseen_accuracy) : <span className="text-ink/30">—</span>}
+                    </td>
+                  )}
+                  {showRobust && (
+                    <td className="tnum py-2.5 pl-4 text-right font-mono text-[12.5px]" title={ROBUST_TITLE}>
+                      {c.metrics.robust_accuracy != null ? pct(c.metrics.robust_accuracy) : <span className="text-ink/30">—</span>}
+                    </td>
+                  )}
+                  <td className="tnum py-2.5 pl-4 text-right font-mono text-[12.5px]">{ms(c.metrics.latency_p50_ms)}</td>
+                  <td className="tnum py-2.5 pl-4 pr-3 text-right font-mono text-[12.5px]">
+                    {usd(c.metrics.cost_per_1k)}{c.metrics.cost_estimated && c.status === "done" && <span className="text-ink/40" title="Serving cost estimated from measured throughput at list price"> est.</span>}
+                  </td>
                 </motion.tr>
               );
             })}
@@ -318,10 +389,14 @@ export function WinnerCard({ result, spec, onOpen, evalSource, nEval }: {
         )}
       </div>
       <div className="mt-7 grid grid-cols-2 gap-6 md:grid-cols-4">
-        <Big label="Held-out accuracy" value={pct(m.accuracy)} sub={`${rows ? `on ${rows} · ` : ""}macro F1 ${m.macro_f1?.toFixed(3)}`} />
+        <Big label="Held-out accuracy" value={pct(m.accuracy)}
+          sub={[rows ? `on ${rows}` : "", m.unseen_accuracy != null ? `unseen ${pct(m.unseen_accuracy)}` : `macro F1 ${m.macro_f1?.toFixed(3)}`].filter(Boolean).join(" · ")}
+          title={m.unseen_accuracy != null ? UNSEEN_TITLE : undefined} />
         <Big label="Cost / 1k calls" value={usd(m.cost_per_1k)} sub={`frontier ${usd(s.frontier_cost_per_1k)}${s.frontier_measured ? "" : " est."}`} title={savingsTitle(s)} />
         <Big label="Cheaper than frontier" value={savingsLabel(s)} sub={`${usd(s.monthly_at_1m.frontier)} → ${usd(s.monthly_at_1m.winner)} per 1M`} accent title={savingsTitle(s)} />
-        <Big label="Latency p50" value={ms(m.latency_p50_ms)} sub={m.size_kb ? `model ${size(m.size_kb)}` : `p95 ${ms(m.latency_p95_ms)}`} />
+        <Big label="Latency p50" value={ms(m.latency_p50_ms)}
+          sub={m.auto_rate_at_95 != null ? `automates ${pct(m.auto_rate_at_95, 0)} at ≥95%` : m.size_kb ? `model ${size(m.size_kb)}` : `p95 ${ms(m.latency_p95_ms)}`}
+          title={m.auto_rate_at_95 != null ? `Share of rows the model can decide alone while staying at least 95% accurate on them${m.confidence_floor_95 != null ? ` (confidence ≥ ${m.confidence_floor_95.toFixed(2)})` : ""}` : undefined} />
       </div>
       <p className="mt-7 max-w-[760px] border-t border-white/10 pt-5 text-[14px] leading-relaxed text-white/75">{result.rationale}</p>
     </motion.div>
@@ -358,6 +433,16 @@ export function DatasetPanel({ dataset, spec }: { dataset: Dataset; spec: Spec |
             {Object.entries(dataset.sources).map(([k, v]) => <Badge key={k}>{k} · {num(v)}</Badge>)}
           </div>
         </div>
+        {dataset.slices && Object.keys(dataset.slices).length > 0 && (
+          <div>
+            <div className="text-[11.5px] text-muted">test slices</div>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {Object.entries(dataset.slices).map(([k, v]) => (
+                <Badge key={k} className={k === "perturbed" ? "text-ink/50" : undefined}><span title={SLICE_TITLE[k]}>{SLICE_LABEL[k] ?? k} · {num(v)}</span></Badge>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       <p className="mt-4 text-[12.5px] text-muted">Evaluated on {dataset.eval_source}.</p>
       <div className="mt-5 space-y-1.5">
@@ -434,7 +519,7 @@ export function Confusion({ labels, matrix }: { labels: string[]; matrix: number
   );
 }
 
-export function ErrorList({ errors }: { errors: { text: string; expected: string; predicted: string }[] }) {
+export function ErrorList({ errors }: { errors: { text: string; expected: string; predicted: string; slice?: string }[] }) {
   if (!errors?.length) return <p className="text-[13px] text-muted">No errors on the held-out set.</p>;
   return (
     <ul className="divide-y divide-line-soft">
@@ -444,6 +529,7 @@ export function ErrorList({ errors }: { errors: { text: string; expected: string
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px]">
             <span className="text-muted">expected</span><Badge tone="neutral">{humanLabel(e.expected)}</Badge>
             <span className="text-muted">got</span><Badge tone="danger">{humanLabel(e.predicted)}</Badge>
+            {e.slice && e.slice !== "core" && <Badge tone="neutral" className="text-ink/50"><span title={SLICE_TITLE[e.slice]}>{SLICE_LABEL[e.slice] ?? e.slice}</span></Badge>}
           </div>
         </li>
       ))}

@@ -183,7 +183,7 @@ class Copilot:
     # ---- turns ----
 
     async def respond(self, history: list[dict], message: str) -> str:
-        if llm.available():
+        if llm.anthropic_available():  # the tool-use loop is Claude's; Together-only setups get the offline router
             return await self._llm(history, message)
         return await self._offline(message)
 

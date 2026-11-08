@@ -54,6 +54,8 @@ function hydrate(lab: Lab, prev: LabState): LabState {
 }
 
 export function applyLabEvent(s: LabState, ev: LabEvent): LabState {
+  // Events arrive in seq order; one already held is a replay (reconnect, hot reload) and must not be shown twice.
+  if (s.events.length && s.events[s.events.length - 1].seq >= ev.seq) return s;
   const next: LabState = { ...s, events: [...s.events, ev] };
   const d = ev.data ?? {};
   if (s.terminal) {
@@ -81,10 +83,11 @@ export function applyLabEvent(s: LabState, ev: LabEvent): LabState {
     next.candidates = c;
   }
   if (ev.kind === "candidate" && d.key) {
-    const prev = s.candidates[d.key] ?? { key: d.key, name: d.key, family: "classical", metrics: {} };
+    // A candidate the roster did not announce (the distillation student) arrives with its own name and family.
+    const prev = s.candidates[d.key] ?? { key: d.key, name: d.name ?? d.key, family: d.family ?? "classical", metrics: {}, blurb: d.blurb };
     next.candidates = {
       ...s.candidates,
-      [d.key]: { ...prev, status: d.status, metrics: d.metrics ?? prev.metrics },
+      [d.key]: { ...prev, status: d.status, metrics: d.metrics ?? prev.metrics, name: d.name ?? prev.name, family: d.family ?? prev.family },
     };
   }
   if (ev.kind === "result" && d.winner) {
@@ -111,6 +114,9 @@ export function useLab(labId: string | null, { history = true }: { history?: boo
   const lastSeq = useRef(0);
   const current = useRef(labId);
   useEffect(() => { current.current = labId; }, [labId]);
+  // Kept in step with the list (which the lab change above empties) instead of zeroed by the stream effect, so a re-run
+  // effect that replays history from seq 1 skips everything already shown.
+  useEffect(() => { lastSeq.current = state.events.length ? state.events[state.events.length - 1].seq : 0; }, [state.events]);
   // Reset while rendering when the lab changes, so a client-side hop between labs never shows stale state.
   if (labId !== trackedId) {
     setTrackedId(labId);
@@ -130,7 +136,6 @@ export function useLab(labId: string | null, { history = true }: { history?: boo
     let es: EventSource | null = null;
     let closed = false;
     let ended = false;
-    lastSeq.current = 0;
 
     const stop = () => {
       es?.close();

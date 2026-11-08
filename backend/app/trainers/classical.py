@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 import os
 import pickle
 import re
@@ -9,6 +10,7 @@ import time
 
 import numpy as np
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.ensemble import VotingClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, cross_val_score
@@ -67,11 +69,31 @@ def _slim(pipe: Pipeline) -> None:
     """Training-only state (Adam moments, early-stopping snapshots, loss curves) is most of an MLP pickle."""
     clf = pipe.steps[-1][1]
     inner = getattr(clf, "estimator", clf)
-    if isinstance(inner, MLPClassifier):
-        for attr in ("_optimizer", "_best_coefs", "_best_intercepts", "loss_curve_", "validation_scores_", "_no_improvement_count"):
-            inner.__dict__.pop(attr, None)
-        inner.coefs_ = [c.astype(np.float32) for c in inner.coefs_]
-        inner.intercepts_ = [b.astype(np.float32) for b in inner.intercepts_]
+    for cand in [inner, *getattr(clf, "estimators_", [])]:
+        if isinstance(cand, MLPClassifier):
+            for attr in ("_optimizer", "_best_coefs", "_best_intercepts", "loss_curve_", "validation_scores_", "_no_improvement_count"):
+                cand.__dict__.pop(attr, None)
+            cand.coefs_ = [c.astype(np.float32) for c in cand.coefs_]
+            cand.intercepts_ = [b.astype(np.float32) for b in cand.intercepts_]
+
+
+def confidences(pipe: Pipeline, texts: list[str]) -> list[float] | None:
+    """P(predicted label) per row: calibrated probabilities when the model has them, else a softmax over margins
+    (which the calibration metrics will show for what it is)."""
+    clf = pipe.steps[-1][1]
+    try:
+        if hasattr(clf, "predict_proba"):
+            return [float(max(p)) for p in pipe.predict_proba(texts)]
+        if hasattr(clf, "decision_function"):
+            out = []
+            for row in pipe.decision_function(texts):
+                row = list(row) if hasattr(row, "__len__") else [float(row), -float(row)]
+                ex = [math.exp(v - max(row)) for v in row]
+                out.append(max(ex) / sum(ex))
+            return out
+    except Exception:
+        return None
+    return None
 
 
 def _calibrate(pipe: Pipeline, dev: list[dict]) -> str:
@@ -94,6 +116,7 @@ def _calibrate(pipe: Pipeline, dev: list[dict]) -> str:
 def _finish(ctx: LabContext, key: str, pipe: Pipeline, train_s: float, notes: str = "", extra=None) -> Result:
     texts = [r["text"] for r in ctx.test]
     preds = list(pipe.predict(texts))
+    conf = confidences(pipe, texts)
     lat = _time_single(pipe, texts)
     _slim(pipe)
     path = os.path.join(ctx.artifact_dir, f"{key}.pkl")
@@ -101,7 +124,7 @@ def _finish(ctx: LabContext, key: str, pipe: Pipeline, train_s: float, notes: st
         pickle.dump(pipe, f)
     return Result(
         predictions=preds, latencies_ms=lat, cost_per_1k=_cost_per_1k(lat),
-        train_cost=train_s * CPU_DOLLARS_PER_SEC, train_seconds=train_s,
+        train_cost=train_s * CPU_DOLLARS_PER_SEC, train_seconds=train_s, confidences=conf,
         size_kb=round(os.path.getsize(path) / 1024, 1), artifact_path=path, notes=notes, extra=extra or {},
     )
 
@@ -219,3 +242,34 @@ class TinyNeural(_Classical):
             ("f", _features(n_docs, max_features=8000)),
             ("clf", MLPClassifier(hidden_layer_sizes=(128,), max_iter=40, early_stopping=n_docs >= 200, random_state=0, alpha=1e-4)),
         ])
+
+
+class Committee(_Classical):
+    key = "committee"
+    display_name = "Specialist committee (soft vote)"
+    blurb = ("Logistic regression, a calibrated SVM, Complement NB and the tiny MLP vote with their probabilities. "
+             "Four cheap models are wrong in different places, so the average is usually right more often than any one.")
+
+    def build(self, n_docs: int, min_class: int = 3) -> Pipeline:
+        members = [("lr", LogisticRegression(C=4.0, max_iter=2000)), ("nb", ComplementNB(alpha=0.3)),
+                   ("mlp", MLPClassifier(hidden_layer_sizes=(128,), max_iter=40, early_stopping=n_docs >= 200, random_state=0, alpha=1e-4))]
+        weights = [2, 1, 1]
+        if min_class >= 3:  # sigmoid calibration folds need three rows of every class
+            members.insert(1, ("svm", CalibratedClassifierCV(LinearSVC(C=0.7), method="sigmoid", cv=3)))
+            weights.insert(1, 2)
+        return Pipeline([("f", _features(n_docs, max_features=20000)),
+                         ("clf", VotingClassifier(members, voting="soft", weights=weights))])
+
+    def fit(self, rows: list[dict], dev: list[dict] | None = None) -> tuple[Pipeline, str]:
+        X, y = _xy(rows)
+        pipe = self.build(len(X), min(y.count(c) for c in set(y))).fit(X, y)
+        return pipe, "members: " + ", ".join(n for n, _ in pipe.steps[-1][1].estimators)
+
+    async def refit(self, ctx: LabContext, rows: list[dict], artifact_path: str) -> bool:
+        def go():
+            pipe, _ = self.fit(rows)  # members are calibrated inside; no second wrapper
+            _slim(pipe)
+            with open(artifact_path, "wb") as f:
+                pickle.dump(pipe, f)
+            return True
+        return await asyncio.to_thread(go)

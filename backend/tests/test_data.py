@@ -39,10 +39,11 @@ def test_curate_small_upload_tests_on_real_rows_only_and_augments_training():
 
     out = asyncio.run(data.curate(_spec(list(merchants)), seeds, emit, None))
     stats = out["stats"]
-    assert stats["eval_source"] == "your real examples"
+    assert stats["eval_source"].startswith("your real examples") and "perturbed copies" in stats["eval_source"]
     assert stats["test"] == int(len(seeds) * 0.3)
-    assert all(r["source"] == "user" for r in out["test"])
-    assert all(r["source"] == "user" for r in out["dev"])
+    headline = [r for r in out["test"] if r.get("slice", "core") != "perturbed"]
+    assert len(headline) == stats["test"] and all(r["source"] == "user" for r in headline)
+    assert stats["slices"]["perturbed"] > 0 and all(r["source"] == "user" for r in out["dev"])
     test_texts = {r["text"] for r in out["test"]}
     assert not test_texts & {r["text"] for r in out["train"]}, "a test row leaked into training"
     assert stats["sources"].get("augmented", 0) > 0 and any("augmenter" in m for m in logs)
@@ -54,8 +55,16 @@ def test_curate_template_task_offline():
 
     tmpl = TEMPLATES["fraud_detection"]
     out = asyncio.run(data.curate(_spec(tmpl.labels, template=tmpl.key), [], emit, None))
-    assert out["stats"]["train"] > 1500 and out["stats"]["test"] == 200
+    st = out["stats"]
+    assert st["train"] > 1500 and st["test"] == 200 and st["test_total"] == 260
+    assert st["slices"] == {"core": 120, "unseen": 80, "perturbed": 60}
     assert set(r["label"] for r in out["train"]) == set(tmpl.labels)
+    # the unseen slice is built from the eval pool only, and nothing from that pool trains
+    eval_entities = {e.upper() for e in tmpl.entities("eval")}
+    train_text = " || ".join(r["text"].upper() for r in out["train"])
+    assert not [e for e in eval_entities if e in train_text]
+    assert all(r["source"] == "procedural-unseen" for r in out["test"] if r.get("slice") == "unseen")
+    assert all(r["origin"] in {x["text"] for x in out["test"]} for r in out["test"] if r.get("slice") == "perturbed")
 
 
 def test_generators_stay_within_their_labels_and_templates_match_prompts():
@@ -92,7 +101,8 @@ def test_user_rows_are_weighted_up_when_a_template_supplies_the_bulk():
     seeds = [{"text": r["text"], "label": r["label"]} for r in generate(tmpl, 40, seed=77, noise=False)]
     out = asyncio.run(data.curate(_spec(tmpl.labels, template=tmpl.key), seeds, emit, None))
     st = out["stats"]
-    assert st["eval_source"] == "your real examples" and st["sources"].get("user-upsampled", 0) > 0
+    assert st["eval_source"].startswith("your real examples")
+    assert st["sources"].get("user-variant", 0) > 0, "rows are weighted up with rewritten variants, not plain copies"
     user_share = sum(1 for r in out["train"] if r["source"].startswith("user")) / st["train"]
     assert user_share >= 0.24
 

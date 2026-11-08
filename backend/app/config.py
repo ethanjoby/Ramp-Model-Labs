@@ -37,14 +37,30 @@ class Settings(BaseSettings):
     # X-Forwarded-For is trusted only when the connection comes from one of these (the Next.js proxy runs locally).
     trusted_proxies: str = "127.0.0.1,::1"
 
+    # Together AI (OpenAI-compatible) unlocks open-weight frontier models as prompted candidates, and stands in for
+    # the Claude agents (planner, synthesizer, teacher, yardstick) when no Anthropic key is set.
+    together_api_key: str = ""
+    together_models: str = ("deepseek-ai/DeepSeek-V4.1-Flash-1017,moonshotai/Kimi-K3.1-Pro,MiniMaxAI/MiniMax-M3.1-Flash,"
+                            "zai-org/GLM-5.3-Flash,Qwen/Qwen3.5-9B")  # zero-shot candidates, comma-separated API strings
+    together_agent_model: str = "deepseek-ai/DeepSeek-V4.1-Flash-1017"  # planning, synthesis, teacher labels, prompt search
+    together_reference_model: str = "moonshotai/Kimi-K3.1-Pro"  # the frontier yardstick when Claude is not configured
+
     local_lm_model: str = "sentence-transformers/all-MiniLM-L6-v2"  # fine-tuned locally when torch is installed
+    local_embed_model: str = "BAAI/bge-small-en-v1.5"  # frozen sentence embeddings + linear head (33M, CPU-served)
+    local_llm_model: str = "Qwen/Qwen3-0.6B"  # a small decoder LLM fine-tuned as a classifier on this machine; "" disables
 
     modal_enabled: bool = False  # set true after `modal token new` + `modal deploy modal_app.py`
     modal_app_name: str = "ramp-model-labs"
     modal_base_model: str = "Qwen/Qwen3-1.7B"  # the LoRA candidate's base; any HF causal LM with a chat template
     modal_heavy_model: str = ""  # e.g. "Qwen/Qwen3-4B-Instruct-2507" adds a second, slower LoRA candidate
+    # The GPU roster: `org/model[@GPU][:4bit]`, comma-separated; the GPU defaults from the model's size and 4-bit (QLoRA)
+    # switches on when bf16 weights would not fit the card. Replaces the two fields above when set.
+    modal_models: str = ("Qwen/Qwen3-1.7B,deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B,"
+                         "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B,moonshotai/Moonlight-16B-A3B-Instruct")
 
     teacher_max_rows: int = 1500  # unlabeled uploaded rows the frontier model will label per lab (about $1 per 1k)
+    distill: bool = True  # after training, teach the cheapest local model from the strongest expensive one when it lags
+    distill_rows: int = 1500  # unlabeled rows the teacher labels for the student
 
     max_upload_bytes: int = 5 * 1024 * 1024
 

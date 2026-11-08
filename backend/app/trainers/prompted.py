@@ -168,7 +168,7 @@ async def measure_single(system: str, rows: list[dict], labels: list[str], model
 
 
 def _llm_ok() -> tuple[bool, str]:
-    return (True, "") if llm.available() else (False, "Add ANTHROPIC_API_KEY to enable LLM candidates")
+    return (True, "") if llm.available() else (False, "Add ANTHROPIC_API_KEY or TOGETHER_API_KEY to enable LLM candidates")
 
 
 def _request_summary(model: str) -> dict:
@@ -195,10 +195,14 @@ class _Prompted(Strategy):
 class ZeroShot(_Prompted):
     def __init__(self, model: str, key: str, name: str, family: str = "prompted"):
         self.model, self.key, self.display_name, self.family = model, key, name, family
-        self.blurb = f"{model} with a task-specific instruction, no examples."
+        self.blurb = f"{llm.pretty(model)} ({model}) with a task-specific instruction, no examples" + (
+            "; thinking switched off, so the cost is the answer alone." if llm.provider(model) == "together" else ".")
 
     def available(self):
-        return _llm_ok()
+        if llm.provider_available(self.model):
+            return True, ""
+        return False, ("Add ANTHROPIC_API_KEY to enable Claude candidates" if llm.provider(self.model) == "anthropic"
+                       else "Add TOGETHER_API_KEY to enable this candidate")
 
     async def run(self, ctx: LabContext) -> Result:
         system = render_program(ctx.spec, default_instruction(ctx.spec), [])
@@ -222,7 +226,7 @@ class OptimizedFewShot(_Prompted):
 
     async def run(self, ctx: LabContext) -> Result:
         s = get_settings()
-        spec, model = ctx.spec, s.fast_model
+        spec, model = ctx.spec, llm.fast_model()
         u = llm.Usage()
         rng = random.Random(13)
         dev = ctx.dev[:60]
@@ -252,7 +256,7 @@ class OptimizedFewShot(_Prompted):
                     f"{base_instr}\n\nLabels: {spec.labels}\n\nMistakes on a dev set:\n{json.dumps(errors, indent=1)}\n\n"
                     "Write 2 improved instructions that fix these failure modes with concrete decision rules. "
                     'Return {"instructions": ["...", "..."]}.',
-                    model=s.agent_model, usage=u)
+                    model=llm.agent_model(), usage=u)
                 proposals += [p for p in out.get("instructions", []) if isinstance(p, str)][:2]
             except Exception as e:  # keep going with what we have
                 await ctx.emit("trainer", "log", f"prompt optimizer · proposal step failed ({e.__class__.__name__})")
