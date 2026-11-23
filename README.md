@@ -6,6 +6,17 @@ The public site shows a **Book a call** section backed by a Google Calendar appo
 
 Describe a financial workflow in plain English (expense categorization, fraud screening, invoice triage, support routing, transaction reconciliation, or anything you can label). A team of agents writes the spec, builds a dataset, trains competing candidates in parallel, scores every one on the same held-out set, and deploys the cheapest model that clears the bar behind an API key.
 
+## Repositories
+
+This folder is the working monorepo. The two deployable halves are published to their own repositories, and that is
+where pushes go:
+
+- frontend: https://github.com/ethanjoby/ascentlabsfrontend
+- backend: https://github.com/ethanjoby/ascentlabsbackend
+
+`scripts/push-split.sh` adds one snapshot commit of `frontend/` and `backend/` on top of each repository's history
+(commit here first; `scripts/push-split.sh frontend` for one side).
+
 ## Run it
 
 ```bash
