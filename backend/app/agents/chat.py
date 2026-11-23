@@ -33,8 +33,8 @@ def system_prompt() -> str:
     enabled = sorted({families[st.family] for st in on if st.family in families})
     frontier = "measured on the same held-out set" if any(st.family == "reference" for st in on) else "estimated from list prices (labelled est.)"
     return (
-        "You are the copilot for Ramp Model Labs, a platform that turns one plain-English prompt into a cheap, "
-        "specialized classifier for a financial workflow (expense categorization, fraud screening, invoice triage, support "
+        "You are the copilot for Ascent Labs, a platform that turns one plain-English prompt into a cheap, "
+        "specialized classifier for any repeated business decision (support routing, product categorization, claims triage, expense categorization, fraud screening, invoice triage, support "
         "routing, transaction reconciliation, or any custom labels). Behind you, agents plan the task, build data, train "
         f"and score competing candidates on held-out data, and deploy the cheapest that clears the bar. Enabled right now: "
         f"{', '.join(enabled) or 'nothing'}. The frontier comparison is {frontier}. Never claim a candidate that is not enabled.\n\n"
@@ -239,5 +239,5 @@ class Copilot:
         if match_template(m) or BUILD_WORDS.search(m):
             out = await self.build_model(m)
             return out.get("error") or "On it. The agent team is planning the task and generating data. Watch it train below."
-        return ("I build cheap, specialized models for financial workflows and run your files through them. Try: \"Build a "
+        return ("I build cheap, specialized models for decisions your team repeats and run your files through them. Try: \"Build a "
                 "model that categorizes card transactions into GL codes\", attach a spreadsheet, or \"classify: UBER *TRIP SF $23.10\".")

@@ -141,9 +141,38 @@ def test_restart_recovery_closes_out_running_labs(signed_in):
     assert signed_in.delete(f"/api/labs/{lab_id}").status_code == 200
 
 
+def test_owner_can_download_the_deployed_model_with_its_scorecard(signed_in, lab):
+    import io
+    import json
+    import zipfile
+
+    slug = lab["result"]["deployment"]["slug"]
+    dep = signed_in.get(f"/api/deployments/{slug}").json()
+    assert dep["artifact_kind"] in ("weights", "pickle")
+    r = signed_in.get(f"/api/deployments/{slug}/artifact")
+    assert r.status_code == 200 and r.headers["content-type"] == "application/zip"
+    assert f"{slug}-model.zip" in r.headers.get("content-disposition", "")
+    z = zipfile.ZipFile(io.BytesIO(r.content))
+    names = set(z.namelist())
+    assert {"README.txt", "spec.json", "metrics.json"} <= names
+    assert any(n.startswith("model/") or n == "model.pkl" for n in names)
+    readme = z.read("README.txt").decode()
+    assert "Held-out accuracy" in readme and ("from_pretrained" in readme or "pickle.load" in readme)
+    assert json.loads(z.read("spec.json"))["labels"] == ["fraud", "legitimate"]
+    assert "accuracy" in json.loads(z.read("metrics.json"))["metrics"]
+    # another user cannot take it
+    other = signed_in.post("/api/auth/firebase", json={"id_token": make_id_token(sub="g-thief", email="thief@example.com")})
+    assert other.status_code == 200
+    try:
+        assert signed_in.get(f"/api/deployments/{slug}/artifact").status_code == 404
+    finally:
+        assert signed_in.post("/api/auth/firebase", json={"id_token": make_id_token()}).status_code == 200
+
+
 def test_delete_lab_removes_its_artifacts(signed_in, lab):
     folder = DATA_DIR / "models" / lab["id"]
     assert folder.exists() and any(folder.iterdir())
     assert signed_in.delete(f"/api/labs/{lab['id']}").status_code == 200
     assert not folder.exists()
     assert signed_in.get(f"/api/labs/{lab['id']}").status_code == 404
+

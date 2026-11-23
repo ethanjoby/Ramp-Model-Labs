@@ -148,6 +148,8 @@ export type Deployment = EvalBasis & {
   samples?: string[];
   target_accuracy?: number | null;
   max_latency_ms?: number | null;
+  /** What a download hands over: full weights, a scikit-learn pickle, a LoRA adapter pointer, or a prompt program. */
+  artifact_kind?: "weights" | "pickle" | "adapter" | "prompt" | null;
 };
 
 export type Prediction = { label: string; confidence: number | null; top: { label: string; p: number }[] | null; route?: "rule" | "model" | "llm" | "review" };

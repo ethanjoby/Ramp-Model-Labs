@@ -1,6 +1,8 @@
-# Ramp Model Labs
+# Ascent Labs
 
 One prompt in, a cheap specialist model out.
+
+The public site shows a **Book a call** section backed by a Google Calendar appointment page instead of a sign-in; the product itself still lives at `/login` and `/app` and is reachable by URL.
 
 Describe a financial workflow in plain English (expense categorization, fraud screening, invoice triage, support routing, transaction reconciliation, or anything you can label). A team of agents writes the spec, builds a dataset, trains competing candidates in parallel, scores every one on the same held-out set, and deploys the cheapest model that clears the bar behind an API key.
 

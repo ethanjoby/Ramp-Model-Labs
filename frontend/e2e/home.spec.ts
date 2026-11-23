@@ -6,7 +6,7 @@ test("hero renders the scene and the recorded run replays to a deployed model", 
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /One prompt in/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Bring the problem/ })).toBeVisible();
   await expect(page.locator("canvas")).toHaveCount(1);
   await page.getByRole("link", { name: "See a run" }).click();
   await expect(page.getByText("Deployed", { exact: true })).toBeVisible({ timeout: 30_000 });
@@ -25,7 +25,7 @@ test("without WebGL the hero keeps its headline and shows the still fallback", a
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: /One prompt in/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Bring the problem/ })).toBeVisible();
   await expect(page.getByTestId("scene-fallback")).toBeVisible();
   await expect(page.locator("canvas")).toHaveCount(0);
   expect(errors).toEqual([]);
@@ -43,13 +43,14 @@ test("the example prompt holds still under reduced motion", async ({ page }) => 
   expect(await example.textContent()).toBe(before);
 });
 
-test("the hero prompt carries into sign-up", async ({ page }) => {
+test("the hero prompt carries into the contact section, and the public site has no sign-in", async ({ page }) => {
   await page.goto("/");
-  await page.getByLabel("Describe the model you need").fill("Route support tickets to the right queue");
+  await expect(page.getByRole("link", { name: "Sign in" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Book a call" }).first()).toHaveAttribute("href", /calendar\.app\.google/);
+  await page.getByLabel("Describe the problem you need solved").fill("Route support tickets to the right queue");
   await page.keyboard.press("Enter");
-  await page.waitForURL(/\/signup\?prompt=/);
-  await expect(page.getByText("Queued prompt")).toBeVisible();
-  await expect(page.getByRole("button", { name: /Continue with Google/ })).toBeEnabled();
+  await expect(page.getByTestId("contact-prompt")).toContainText("Route support tickets to the right queue");
+  await expect(page).toHaveURL(/^(?!.*\/signup).*/);
 });
 
 test("no horizontal overflow at phone width", async ({ page }) => {

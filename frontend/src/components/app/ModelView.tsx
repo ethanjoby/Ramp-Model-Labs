@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import clsx from "clsx";
-import { ArrowLeft, Check, Copy, RefreshCw, ShieldAlert, Upload } from "lucide-react";
+import { ArrowLeft, Check, Copy, Download, RefreshCw, ShieldAlert, Upload } from "lucide-react";
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge, Card, Spinner, Stat } from "@/components/ui/bits";
@@ -92,7 +92,7 @@ export function ModelView() {
 
   const example = (dep?.samples?.[0] ?? "UBER *TRIP SF $23.10").slice(0, 90);
   const snippet = `curl ${origin}/v1/models/${slug}/predict \\
-  -H "Authorization: Bearer $RML_API_KEY" \\
+  -H "Authorization: Bearer $ASCENT_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"inputs": [${JSON.stringify(example)}]}'`;
 
@@ -125,6 +125,22 @@ export function ModelView() {
             {dep.model} · <Link href={`/app/labs/${dep.lab_id}`} className="underline underline-offset-4 hover:text-ink">view lab</Link>
           </p>
         </div>
+        {dep.artifact_kind && (
+          <div className="flex flex-col items-end gap-1">
+            {/* A plain anchor, not a client-side Link: the browser must treat this as a file download. */}
+            <a
+              href={`/api/deployments/${slug}/artifact`}
+              download
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-full border border-line bg-white px-5 text-sm font-medium tracking-[-0.01em] text-ink transition-[transform,border-color] duration-150 hover:border-ink/40 active:scale-[0.97]"
+            >
+              <Download className="h-4 w-4" /> Download model
+            </a>
+            <span className="text-[11.5px] text-muted">
+              {{ weights: "weights, spec and scorecard", pickle: "pipeline, spec and scorecard",
+                 adapter: "adapter pointer, spec and scorecard", prompt: "prompt program, spec and scorecard" }[dep.artifact_kind]} · yours to run anywhere
+            </span>
+          </div>
+        )}
       </div>
 
       {dep.status === "draft" && (

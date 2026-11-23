@@ -1,0 +1,994 @@
+{
+ "name": "Card Fraud Screener",
+ "prompt": "Screen card transactions for fraud and flag anything suspicious. Binary labels: fraud (suspicious, flag for review) or legitimate. Target: at least 90% accuracy on held-out data.",
+ "created": "2026-11-06",
+ "spec": {
+  "labels": [
+   "fraud",
+   "legitimate"
+  ],
+  "target_accuracy": 0.9,
+  "max_latency_ms": 200.0
+ },
+ "dataset": {
+  "train": 2361,
+  "dev": 150,
+  "test": 200,
+  "label_counts": {
+   "fraud": 825,
+   "legitimate": 1536
+  },
+  "eval_source": "held-out synthetic, no planted noise (upload 30+ real examples for a stricter test)",
+  "sources": {
+   "procedural": 2631,
+   "llm": 80
+  }
+ },
+ "result": {
+  "winner": "finetuned_encoder",
+  "winner_name": "Fine-tuned MiniLM (22M, local)",
+  "pareto": [
+   "linear_specialist",
+   "cascade",
+   "finetuned_encoder"
+  ],
+  "savings": {
+   "frontier_cost_per_1k": 0.705,
+   "frontier_measured": true,
+   "frontier_accuracy": 0.91,
+   "winner_cost_per_1k": 0.0008677,
+   "multiple": 812.5,
+   "monthly_at_1m": {
+    "winner": 0.87,
+    "frontier": 705.0
+   }
+  },
+  "rationale": "The fine-tuned MiniLM was selected because it has the highest accuracy of all candidates (0.980, F1 0.977) while running at about 66ms p50 and roughly $0.00087 per 1k transactions, far cheaper than the frontier reference at $0.705 per 1k. The main trade-off versus the runner-up, the fine-tuned Qwen3-1.7B (0.960 accuracy, F1 0.954), is that Qwen is about 2x slower and requires GPU hardware and LoRA serving for a lower score, so MiniLM gives better accuracy at a fraction of the cost and operational complexity."
+ },
+ "candidates": [
+  {
+   "key": "naive_bayes",
+   "name": "Naive Bayes baseline",
+   "family": "classical",
+   "status": "done",
+   "is_winner": false,
+   "metrics": {
+    "accuracy": 0.945,
+    "accuracy_ci": [
+     0.9042,
+     0.969
+    ],
+    "macro_f1": 0.938,
+    "per_label_f1": {
+     "fraud": 0.917,
+     "legitimate": 0.959
+    },
+    "confusion": [
+     [
+      61,
+      3
+     ],
+     [
+      8,
+      128
+     ]
+    ],
+    "latency_p50_ms": 1.489,
+    "latency_p95_ms": 4.853,
+    "cost_per_1k": 1.95e-05,
+    "train_cost": 0.0,
+    "train_seconds": 1.27,
+    "size_kb": 152.3,
+    "n_eval": 200,
+    "errors": [
+     {
+      "text": "contactless $523.36 at CRYPTO EXCHANGE*COINFLOW 14:34 local; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $522.49 at WHOLE FOODS 07:10 local; card added to wallet 4h ago; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $19.47 at PREPAID TOPUP* 05:22 local; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $117.61 at UBER *TRIP 19:41 local; card added to wallet 4h ago; IP geolocates to RO; billing zip verified",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $21.37 at SWEETGREEN 01:36 local; velocity: 7 txns in 5 min",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-present $157.52 at LUXE WATCHES INTL 08:30 local; first purchase at merchant; billing zip verified",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $1,308.71 at UBER *TRIP 14:26 local; 5 declined attempts in last 10 min",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $7.40 at GIFTCARDMALL 10:36 local; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-present $21.56 at WIRE*INTL TRANSFER 00:15 local; recurring vendor, 14 prior payments; new device fingerprint; IP geolocates to BR",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $31.65 at ELECTRONICS-DEPOT-ONLINE 04:19 local; no prior alerts",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $49.72 at ELECTRONICS-DEPOT-ONLINE 02:39 local; no prior alerts",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     }
+    ]
+   }
+  },
+  {
+   "key": "linear_specialist",
+   "name": "Linear specialist (tuned)",
+   "family": "classical",
+   "status": "done",
+   "is_winner": false,
+   "metrics": {
+    "accuracy": 0.97,
+    "accuracy_ci": [
+     0.9361,
+     0.9862
+    ],
+    "macro_f1": 0.9646,
+    "per_label_f1": {
+     "fraud": 0.951,
+     "legitimate": 0.978
+    },
+    "confusion": [
+     [
+      58,
+      6
+     ],
+     [
+      0,
+      136
+     ]
+    ],
+    "latency_p50_ms": 1.618,
+    "latency_p95_ms": 2.459,
+    "cost_per_1k": 2.12e-05,
+    "train_cost": 0.0,
+    "train_seconds": 3.08,
+    "size_kb": 240.8,
+    "n_eval": 200,
+    "errors": [
+     {
+      "text": "card-present $24.93 at WIRE*INTL TRANSFER 01:07 local; first purchase at merchant",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $45.95 at SLACK TECHNOLOGIES 21:33 local; IP geolocates to VN; shipping address != billing",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-present $21.56 at WIRE*INTL TRANSFER 00:15 local; recurring vendor, 14 prior payments; new device fingerprint; IP geolocates to BR",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $31.65 at ELECTRONICS-DEPOT-ONLINE 04:19 local; no prior alerts",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $154.35 at GIFTCARDMALL 12:01 local; first purchase at merchant",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $49.72 at ELECTRONICS-DEPOT-ONLINE 02:39 local; no prior alerts",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     }
+    ]
+   }
+  },
+  {
+   "key": "svm_specialist",
+   "name": "Margin specialist (SVM)",
+   "family": "classical",
+   "status": "done",
+   "is_winner": false,
+   "metrics": {
+    "accuracy": 0.95,
+    "accuracy_ci": [
+     0.9104,
+     0.9726
+    ],
+    "macro_f1": 0.9416,
+    "per_label_f1": {
+     "fraud": 0.919,
+     "legitimate": 0.964
+    },
+    "confusion": [
+     [
+      57,
+      7
+     ],
+     [
+      3,
+      133
+     ]
+    ],
+    "latency_p50_ms": 1.677,
+    "latency_p95_ms": 2.634,
+    "cost_per_1k": 2.2e-05,
+    "train_cost": 0.0,
+    "train_seconds": 1.45,
+    "size_kb": 240.7,
+    "n_eval": 200,
+    "errors": [
+     {
+      "text": "card-not-present $522.49 at WHOLE FOODS 07:10 local; card added to wallet 4h ago; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $117.61 at UBER *TRIP 19:41 local; card added to wallet 4h ago; IP geolocates to RO; billing zip verified",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $1,308.71 at UBER *TRIP 14:26 local; 5 declined attempts in last 10 min",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-present $24.93 at WIRE*INTL TRANSFER 01:07 local; first purchase at merchant",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $45.95 at SLACK TECHNOLOGIES 21:33 local; IP geolocates to VN; shipping address != billing",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $46.95 at WIRE*INTL TRANSFER 17:35 local; first purchase at merchant",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-present $21.56 at WIRE*INTL TRANSFER 00:15 local; recurring vendor, 14 prior payments; new device fingerprint; IP geolocates to BR",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $31.65 at ELECTRONICS-DEPOT-ONLINE 04:19 local; no prior alerts",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $154.35 at GIFTCARDMALL 12:01 local; first purchase at merchant",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $49.72 at ELECTRONICS-DEPOT-ONLINE 02:39 local; no prior alerts",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     }
+    ]
+   }
+  },
+  {
+   "key": "tiny_neural",
+   "name": "Tiny neural net",
+   "family": "classical",
+   "status": "done",
+   "is_winner": false,
+   "metrics": {
+    "accuracy": 0.955,
+    "accuracy_ci": [
+     0.9167,
+     0.9761
+    ],
+    "macro_f1": 0.9476,
+    "per_label_f1": {
+     "fraud": 0.928,
+     "legitimate": 0.967
+    },
+    "confusion": [
+     [
+      58,
+      6
+     ],
+     [
+      3,
+      133
+     ]
+    ],
+    "latency_p50_ms": 1.627,
+    "latency_p95_ms": 4.942,
+    "cost_per_1k": 2.13e-05,
+    "train_cost": 0.0001,
+    "train_seconds": 5.75,
+    "size_kb": 16943.9,
+    "n_eval": 200,
+    "errors": [
+     {
+      "text": "card-present $384.85 at CRYPTO EXCHANGE*COINFLOW 12:36 local; IP geolocates to BR; first purchase at merchant; amount matches PO #8315",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $523.36 at CRYPTO EXCHANGE*COINFLOW 14:34 local; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $19.47 at PREPAID TOPUP* 05:22 local; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $45.95 at SLACK TECHNOLOGIES 21:33 local; IP geolocates to VN; shipping address != billing",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $223.48 at DELTA AIR 03:29 local; card added to wallet 6h ago; first purchase at merchant",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-present $21.56 at WIRE*INTL TRANSFER 00:15 local; recurring vendor, 14 prior payments; new device fingerprint; IP geolocates to BR",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $31.65 at ELECTRONICS-DEPOT-ONLINE 04:19 local; no prior alerts",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $154.35 at GIFTCARDMALL 12:01 local; first purchase at merchant",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $49.72 at ELECTRONICS-DEPOT-ONLINE 02:39 local; no prior alerts",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     }
+    ]
+   }
+  },
+  {
+   "key": "cascade",
+   "name": "Cascade (rules, model, LLM, review)",
+   "family": "classical",
+   "status": "done",
+   "is_winner": false,
+   "metrics": {
+    "accuracy": 0.955,
+    "accuracy_ci": [
+     0.9167,
+     0.9761
+    ],
+    "macro_f1": 0.9481,
+    "per_label_f1": {
+     "fraud": 0.929,
+     "legitimate": 0.967
+    },
+    "confusion": [
+     [
+      59,
+      5
+     ],
+     [
+      4,
+      132
+     ]
+    ],
+    "latency_p50_ms": 1.011,
+    "latency_p95_ms": 1.891,
+    "cost_per_1k": 1.32e-05,
+    "train_cost": 0.0,
+    "train_seconds": 1.87,
+    "size_kb": 241.2,
+    "n_eval": 200,
+    "errors": [
+     {
+      "text": "contactless $523.36 at CRYPTO EXCHANGE*COINFLOW 14:34 local; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $522.49 at WHOLE FOODS 07:10 local; card added to wallet 4h ago; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $117.61 at UBER *TRIP 19:41 local; card added to wallet 4h ago; IP geolocates to RO; billing zip verified",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $1,308.71 at UBER *TRIP 14:26 local; 5 declined attempts in last 10 min",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-present $24.93 at WIRE*INTL TRANSFER 01:07 local; first purchase at merchant",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $45.95 at SLACK TECHNOLOGIES 21:33 local; IP geolocates to VN; shipping address != billing",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-present $21.56 at WIRE*INTL TRANSFER 00:15 local; recurring vendor, 14 prior payments; new device fingerprint; IP geolocates to BR",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $31.65 at ELECTRONICS-DEPOT-ONLINE 04:19 local; no prior alerts",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $49.72 at ELECTRONICS-DEPOT-ONLINE 02:39 local; no prior alerts",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     }
+    ]
+   }
+  },
+  {
+   "key": "finetuned_encoder",
+   "name": "Fine-tuned MiniLM (22M, local)",
+   "family": "finetuned",
+   "status": "done",
+   "is_winner": true,
+   "metrics": {
+    "accuracy": 0.98,
+    "accuracy_ci": [
+     0.9497,
+     0.9922
+    ],
+    "macro_f1": 0.9768,
+    "per_label_f1": {
+     "fraud": 0.968,
+     "legitimate": 0.985
+    },
+    "confusion": [
+     [
+      61,
+      3
+     ],
+     [
+      1,
+      135
+     ]
+    ],
+    "latency_p50_ms": 66.236,
+    "latency_p95_ms": 139.843,
+    "cost_per_1k": 0.0008677,
+    "train_cost": 0.0003,
+    "train_seconds": 21.44,
+    "size_kb": 89434.6,
+    "n_eval": 200,
+    "errors": [
+     {
+      "text": "contactless $523.36 at CRYPTO EXCHANGE*COINFLOW 14:34 local; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-present $21.56 at WIRE*INTL TRANSFER 00:15 local; recurring vendor, 14 prior payments; new device fingerprint; IP geolocates to BR",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $31.65 at ELECTRONICS-DEPOT-ONLINE 04:19 local; no prior alerts",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $49.72 at ELECTRONICS-DEPOT-ONLINE 02:39 local; no prior alerts",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     }
+    ]
+   }
+  },
+  {
+   "key": "finetuned_modernbert",
+   "name": "Fine-tuned ModernBERT-base (150M, local)",
+   "family": "finetuned",
+   "status": "done",
+   "is_winner": false,
+   "metrics": {
+    "accuracy": 0.91,
+    "accuracy_ci": [
+     0.8622,
+     0.9423
+    ],
+    "macro_f1": 0.8871,
+    "per_label_f1": {
+     "fraud": 0.836,
+     "legitimate": 0.938
+    },
+    "confusion": [
+     [
+      46,
+      18
+     ],
+     [
+      0,
+      136
+     ]
+    ],
+    "latency_p50_ms": 56.143,
+    "latency_p95_ms": 73.532,
+    "cost_per_1k": 0.0007355,
+    "train_cost": 0.004,
+    "train_seconds": 306.23,
+    "size_kb": 587915.7,
+    "n_eval": 200,
+    "errors": [
+     {
+      "text": "card-present $24.93 at WIRE*INTL TRANSFER 01:07 local; first purchase at merchant",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-present $18.80 at LUXE WATCHES INTL 21:06 local; shipping address != billing",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $45.95 at SLACK TECHNOLOGIES 21:33 local; IP geolocates to VN; shipping address != billing",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-present $94.48 at GIFTCARDMALL 19:23 local; new device fingerprint",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "contactless $140.22 at GIFTCARDMALL 19:10 local; IP geolocates to BR",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $223.48 at DELTA AIR 03:29 local; card added to wallet 6h ago; first purchase at merchant",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "contactless $9.16 at PREPAID TOPUP* 09:20 local; card added to wallet 1h ago; shipping address != billing",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $46.95 at WIRE*INTL TRANSFER 17:35 local; first purchase at merchant",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $151.35 at AWS 08:07 local; IP geolocates to NG; card added to wallet 6h ago",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $163.69 at PREPAID TOPUP* 22:18 local; shipping address != billing",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-present $83.43 at LUXE WATCHES INTL 18:40 local; card added to wallet 6h ago",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "contactless $6.73 at PREPAID TOPUP* 20:21 local; velocity: 6 txns in 5 min",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     }
+    ]
+   }
+  },
+  {
+   "key": "zero_shot_haiku",
+   "name": "Claude Haiku 5.5 \u00b7 zero-shot",
+   "family": "prompted",
+   "status": "done",
+   "is_winner": false,
+   "metrics": {
+    "accuracy": 0.875,
+    "accuracy_ci": [
+     0.822,
+     0.9139
+    ],
+    "macro_f1": 0.8677,
+    "per_label_f1": {
+     "fraud": 0.837,
+     "legitimate": 0.899
+    },
+    "confusion": [
+     [
+      64,
+      0
+     ],
+     [
+      25,
+      111
+     ]
+    ],
+    "latency_p50_ms": 764.902,
+    "latency_p95_ms": 1221.207,
+    "cost_per_1k": 0.03509,
+    "train_cost": 0.0,
+    "train_seconds": 0.0,
+    "size_kb": null,
+    "n_eval": 200,
+    "errors": [
+     {
+      "text": "card-not-present $34.09 at UBER *TRIP 08:25 local; billing zip verified; IP geolocates to RU",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $30.86 at DELTA AIR 02:34 local; employee traveling (matches itinerary); amount matches PO #8447; card added to wallet 4h ago",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-present $384.85 at CRYPTO EXCHANGE*COINFLOW 12:36 local; IP geolocates to BR; first purchase at merchant; amount matches PO #8315",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-present $190.76 at LUXE WATCHES INTL 09:04 local; no prior alerts",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $523.36 at CRYPTO EXCHANGE*COINFLOW 14:34 local; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $3,963.00 at DELTA AIR 06:17 local; billing zip verified",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $3.12 at WIRE*INTL TRANSFER 13:19 local; no prior alerts",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-present $151.23 at WIRE*INTL TRANSFER 22:39 local; no prior alerts",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $522.49 at WHOLE FOODS 07:10 local; card added to wallet 4h ago; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-present $1.48 at SWEETGREEN 09:37 local; IP geolocates to BR",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $87.41 at GIFTCARDMALL 19:25 local; no prior alerts",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $19.47 at PREPAID TOPUP* 05:22 local; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     }
+    ]
+   }
+  },
+  {
+   "key": "optimized_prompt",
+   "name": "Optimized prompt program",
+   "family": "prompted",
+   "status": "done",
+   "is_winner": false,
+   "metrics": {
+    "accuracy": 0.735,
+    "accuracy_ci": [
+     0.6698,
+     0.7913
+    ],
+    "macro_f1": 0.582,
+    "per_label_f1": {
+     "fraud": 0.329,
+     "legitimate": 0.835
+    },
+    "confusion": [
+     [
+      13,
+      51
+     ],
+     [
+      2,
+      134
+     ]
+    ],
+    "latency_p50_ms": 767.473,
+    "latency_p95_ms": 1642.259,
+    "cost_per_1k": 0.09414,
+    "train_cost": 0.0425,
+    "train_seconds": 0.0,
+    "size_kb": null,
+    "n_eval": 200,
+    "errors": [
+     {
+      "text": "card-not-present $3,963.00 at DELTA AIR 06:17 local; billing zip verified",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $1,308.71 at UBER *TRIP 14:26 local; 5 declined attempts in last 10 min",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $145.69 at WIRE*INTL TRANSFER 14:33 local; first purchase at merchant; IP geolocates to RO",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "contactless $141.76 at LUXE WATCHES INTL 09:47 local; new device fingerprint; IP geolocates to VN",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "contactless $237.27 at ELECTRONICS-DEPOT-ONLINE 19:32 local; card added to wallet 3h ago",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-present $24.93 at WIRE*INTL TRANSFER 01:07 local; first purchase at merchant",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "contactless $376.06 at LUXE WATCHES INTL 10:43 local; new device fingerprint; 6 declined attempts in last 10 min",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $82.76 at ELECTRONICS-DEPOT-ONLINE 03:09 local; card added to wallet 5h ago; recurring vendor, 14 prior payments; IP geolocates to VN; new device fingerprint",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-present $105.95 at WHOLE FOODS 20:16 local; shipping address != billing; first purchase at merchant; IP geolocates to VN",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-present $139.71 at LUXE WATCHES INTL 22:38 local; IP geolocates to RO",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-present $94.96 at UBER *TRIP 12:11 local; 5 declined attempts in last 10 min; shipping address != billing",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-present $18.80 at LUXE WATCHES INTL 21:06 local; shipping address != billing",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     }
+    ]
+   }
+  },
+  {
+   "key": "lora_qwen",
+   "name": "Fine-tuned Qwen3-1.7B (LoRA, GPU)",
+   "family": "finetuned",
+   "status": "done",
+   "is_winner": false,
+   "metrics": {
+    "accuracy": 0.96,
+    "accuracy_ci": [
+     0.9231,
+     0.9796
+    ],
+    "macro_f1": 0.954,
+    "per_label_f1": {
+     "fraud": 0.938,
+     "legitimate": 0.971
+    },
+    "confusion": [
+     [
+      60,
+      4
+     ],
+     [
+      4,
+      132
+     ]
+    ],
+    "latency_p50_ms": 141.0,
+    "latency_p95_ms": 149.781,
+    "cost_per_1k": 0.004818,
+    "cost_estimated": true,
+    "train_cost": 0.1054,
+    "train_seconds": 461.7,
+    "size_kb": 49620.7,
+    "n_eval": 200,
+    "errors": [
+     {
+      "text": "card-present $384.85 at CRYPTO EXCHANGE*COINFLOW 12:36 local; IP geolocates to BR; first purchase at merchant; amount matches PO #8315",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $523.36 at CRYPTO EXCHANGE*COINFLOW 14:34 local; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $522.49 at WHOLE FOODS 07:10 local; card added to wallet 4h ago; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $117.61 at UBER *TRIP 19:41 local; card added to wallet 4h ago; IP geolocates to RO; billing zip verified",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-present $24.93 at WIRE*INTL TRANSFER 01:07 local; first purchase at merchant",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $37.74 at WIRE*INTL TRANSFER 22:26 local; billing zip verified; first purchase at merchant; velocity: 2 txns in 5 min",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $31.65 at ELECTRONICS-DEPOT-ONLINE 04:19 local; no prior alerts",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     },
+     {
+      "text": "card-not-present $49.72 at ELECTRONICS-DEPOT-ONLINE 02:39 local; no prior alerts",
+      "expected": "fraud",
+      "predicted": "legitimate"
+     }
+    ]
+   }
+  },
+  {
+   "key": "frontier_reference",
+   "name": "Claude Sonnet 5.5 \u00b7 frontier reference",
+   "family": "reference",
+   "status": "done",
+   "is_winner": false,
+   "metrics": {
+    "accuracy": 0.91,
+    "accuracy_ci": [
+     0.8622,
+     0.9423
+    ],
+    "macro_f1": 0.9017,
+    "per_label_f1": {
+     "fraud": 0.873,
+     "legitimate": 0.93
+    },
+    "confusion": [
+     [
+      62,
+      2
+     ],
+     [
+      16,
+      120
+     ]
+    ],
+    "latency_p50_ms": 1203.912,
+    "latency_p95_ms": 1339.632,
+    "cost_per_1k": 0.705,
+    "train_cost": 0.0,
+    "train_seconds": 0.0,
+    "size_kb": null,
+    "n_eval": 200,
+    "errors": [
+     {
+      "text": "card-not-present $34.09 at UBER *TRIP 08:25 local; billing zip verified; IP geolocates to RU",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-present $384.85 at CRYPTO EXCHANGE*COINFLOW 12:36 local; IP geolocates to BR; first purchase at merchant; amount matches PO #8315",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $523.36 at CRYPTO EXCHANGE*COINFLOW 14:34 local; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $3.12 at WIRE*INTL TRANSFER 13:19 local; no prior alerts",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-present $151.23 at WIRE*INTL TRANSFER 22:39 local; no prior alerts",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $522.49 at WHOLE FOODS 07:10 local; card added to wallet 4h ago; first purchase at merchant",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $103.48 at MARRIOTT 05:11 local; employee traveling (matches itinerary); shipping address != billing; velocity: 7 txns in 5 min",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $117.61 at UBER *TRIP 19:41 local; card added to wallet 4h ago; IP geolocates to RO; billing zip verified",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "contactless $21.37 at SWEETGREEN 01:36 local; velocity: 7 txns in 5 min",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-not-present $48.36 at PREPAID TOPUP* 09:54 local; IP geolocates to VN; amount matches PO #1255",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-present $157.52 at LUXE WATCHES INTL 08:30 local; first purchase at merchant; billing zip verified",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     },
+     {
+      "text": "card-present $100.44 at SLACK TECHNOLOGIES 20:45 local; IP geolocates to RU",
+      "expected": "legitimate",
+      "predicted": "fraud"
+     }
+    ]
+   }
+  }
+ ]
+}

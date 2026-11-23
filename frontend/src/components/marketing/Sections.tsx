@@ -3,8 +3,10 @@
 import { motion, useInView } from "motion/react";
 import { useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Check } from "lucide-react";
+import { useEffect } from "react";
 import { ButtonLink } from "@/components/ui/Button";
 import { Logo } from "@/components/ui/Logo";
+import { BOOKING_URL, PROMPT_EVENT } from "@/lib/contact";
 import { EASE_OUT } from "@/lib/motion";
 import { num, usd } from "@/lib/format";
 
@@ -29,7 +31,7 @@ const AGENTS = [
     name: "Planner",
     title: "Turns your sentence into a spec",
     body: "Infers the labels, what one input looks like, the accuracy bar, latency budget, and whether you care most about cost, speed, or quality.",
-    detail: ["labels: 12 GL categories", "target: ≥ 85% held-out accuracy", "optimize: cost"],
+    detail: ["labels: 9 support queues", "target: ≥ 85% held-out accuracy", "optimize: cost"],
   },
   {
     name: "Curator",
@@ -40,20 +42,20 @@ const AGENTS = [
   {
     name: "Trainer",
     title: "Runs competing strategies in parallel",
-    body: "Small specialist models, two transformer encoders fine-tuned on this machine (one after a masked-LM warm-up on your own rows), a LoRA fine-tune of Qwen3 on a GPU, zero-shot LLMs, and a DSPy-style optimized prompt program. Fine-tuning is a candidate, not a default.",
-    detail: ["linear, SVM, tiny MLP", "MiniLM + ModernBERT fine-tuned locally", "Qwen3-1.7B LoRA on a Modal L4", "prompt search over instructions + demos"],
+    body: "Small specialist models, transformer encoders and a small decoder LLM fine-tuned on this machine, LoRA fine-tunes of Qwen3 and DeepSeek on cloud GPUs, zero-shot LLMs, and a DSPy-style optimized prompt program. Fine-tuning is a candidate, not a default.",
+    detail: ["linear, SVM, committee", "MiniLM, ModernBERT, Qwen3-0.6B locally", "Qwen3 + DeepSeek LoRA on Modal GPUs", "prompt search over instructions + demos"],
   },
   {
     name: "Judge",
     title: "Picks the cheapest model that clears the bar",
     body: "Every candidate is scored on the same held-out set for accuracy, macro F1, p50 latency, and cost per thousand calls. Then it explains the trade-off in plain English.",
-    detail: ["Pareto frontier: accuracy × cost", "frontier model as the yardstick", "rationale you can show your CFO"],
+    detail: ["Pareto frontier: accuracy × cost", "frontier model as the yardstick", "a rationale in plain English"],
   },
   {
     name: "Deployer",
-    title: "Ships an endpoint, then keeps learning",
-    body: "The winner goes live behind an API key. Corrections from your team become labeled data, and one click re-runs the whole lab.",
-    detail: ["POST /v1/models/{slug}/predict", "confidence + top-3 labels", "feedback → retrain"],
+    title: "Ships an endpoint, and hands you the weights",
+    body: "The winner goes live behind an API key, and the trained weights, spec and scorecard are yours to download. Corrections from your team become labeled data, and one click re-runs the whole lab, here or on your own machines.",
+    detail: ["POST /v1/models/{slug}/predict", "download: weights + scorecard", "feedback → retrain"],
   },
 ];
 
@@ -65,11 +67,12 @@ export function Pipeline() {
           <Reveal>
             <p className="text-[13px] text-muted">How it works</p>
             <h2 className="display mt-5 text-[clamp(36px,4.6vw,60px)]">
-              General models are overqualified for most finance work.
+              The best model for your job is rarely the biggest one for rent.
             </h2>
             <p className="mt-6 max-w-[440px] text-[16px] leading-relaxed text-muted">
-              Categorizing a card swipe doesn&apos;t need a trillion parameters. It needs a model that has seen ten
-              thousand card swipes. Five agents build that model for you, end to end.
+              Routing a support ticket, coding a transaction or triaging a claim doesn&apos;t need a trillion
+              parameters billed by the token. It needs a model that has seen ten thousand of yours. Five agents build
+              that model from open weights, prove it against the frontier on your own held-out rows, and hand it over.
             </p>
           </Reveal>
         </div>
@@ -111,7 +114,7 @@ const TIERS = [
   { name: "Fine-tuned Qwen3-1.7B", sub: "LoRA on a shared L4 GPU, est.", per1k: 0.009, tone: "bg-solar-deep" },
   { name: "Fine-tuned ModernBERT", sub: "150M params, trained locally, served on CPU", per1k: 0.0013, tone: "bg-solar-deep" },
   { name: "Fine-tuned MiniLM", sub: "22M params, trained locally, served on CPU", per1k: 0.0001, tone: "bg-solar-deep" },
-  { name: "Specialist", sub: "Trained by Model Labs, CPU", per1k: 0.000012, tone: "bg-solar" },
+  { name: "Specialist", sub: "Trained by Ascent Labs, CPU", per1k: 0.000012, tone: "bg-solar" },
 ];
 
 export function CostCalc() {
@@ -177,14 +180,61 @@ export function CostCalc() {
   );
 }
 
+/* ---------------------------------------------------------------- ownership */
+
+const OWNERSHIP = [
+  {
+    title: "Open weights, not a rented API",
+    body: "Every candidate we train starts from an open model: MiniLM, ModernBERT, Qwen3, DeepSeek's distills, Moonshot's Moonlight. The weights come out the other side as yours, with no per-token meter attached.",
+  },
+  {
+    title: "Picked for you, not for a vendor",
+    body: "Nineteen candidates, from a bag of words to a 16B-parameter fine-tune, compete on the same held-out rows. The judge takes the cheapest one that clears your bar, and shows the frontier model's score next to it so you can see what you are not paying for.",
+  },
+  {
+    title: "Take it with you, keep training it",
+    body: "Download the model with its spec and scorecard, run it on your own hardware, and keep teaching it from the corrections your team already makes. If you leave, the model leaves with you.",
+  },
+];
+
+export function Ownership() {
+  return (
+    <section id="own" className="border-t border-line bg-white">
+      <div className="mx-auto max-w-[1240px] px-5 py-28 md:px-8 md:py-36">
+        <Reveal>
+          <p className="text-[13px] text-muted">Why open</p>
+          <h2 className="display mt-5 max-w-[16ch] text-[clamp(36px,4.6vw,60px)]">Own the intelligence you pay for.</h2>
+          <p className="mt-6 max-w-[560px] text-[16px] leading-relaxed text-muted">
+            The big AI vendors would like you renting the largest model they have for every row, forever. Most
+            problems are solved better, and far cheaper, by a small model trained on your own data, and open
+            weights mean nobody can switch it off or raise the price on you.
+          </p>
+        </Reveal>
+        <div className="mt-14 grid gap-6 md:grid-cols-3">
+          {OWNERSHIP.map((o, i) => (
+            <Reveal key={o.title} delay={i * 0.06}>
+              <div className="h-full rounded-3xl border border-line-soft bg-paper p-7">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ink font-mono text-[12px] text-solar">{i + 1}</div>
+                <h3 className="mt-6 text-[20px] tracking-[-0.02em]">{o.title}</h3>
+                <p className="mt-3 text-[15px] leading-relaxed text-ink/70">{o.body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /* ---------------------------------------------------------------- workflows */
 
 const WORKFLOWS = [
+  { name: "Support routing", input: "locked out after resetting my phone, the 2FA code never arrives and I have a demo in an hour", label: "account_access" },
+  { name: "Product categorization", input: "Women's trail running shoe, Gore-Tex upper, Vibram sole, size 8, 2 pairs", label: "Footwear > Trail Running" },
+  { name: "Claims triage", input: "rear-ended at a stop light; rear bumper damage, no injuries, police report #4471 attached", label: "fast_track" },
+  { name: "IT ticket priority", input: "VPN down for the whole sales floor since 9am, reported by the regional director", label: "P1" },
   { name: "Expense categorization", input: "SQ *BLUE BOTTLE COFFEE SAN FRANCISCO CA | $14.50 | memo: coffee w/ candidate", label: "Meals & Entertainment" },
-  { name: "Fraud screening", input: "card-not-present $2,499.00 at GIFTCARDMALL 03:12 local; new device fingerprint; 4 declined attempts in last 10 min", label: "fraud" },
-  { name: "Support routing", input: "netsuite sync is failing with an error on GL codes", label: "accounting_integration" },
-  { name: "Transaction reconciliation", input: "BANK ACH GLOBEX CORP $4,210.00 REF 58213 | GL Globex Corp $4,350.00 REF 58213 | diff $140.00; 1d apart; short pay", label: "amount_mismatch" },
-  { name: "AP invoice triage", input: "Northwind Supply INV-73944 $3,867.82 PO-1464; amount + vendor match payment 3 days ago", label: "duplicate" },
+  { name: "Listing moderation", input: "\"authentic\" designer handbag, $40, ships from overseas, DM me to pay outside the app", label: "off_platform_payment" },
   { name: "Anything you can label", input: "Upload a CSV of text and labels, or just describe the categories.", label: "your_labels" },
 ];
 
@@ -249,27 +299,89 @@ export function ApiSection() {
       <div className="mx-auto grid max-w-[1240px] grid-cols-[minmax(0,1fr)] gap-12 px-5 py-28 md:grid-cols-2 md:px-8 md:py-32">
         <Reveal>
           <p className="text-[13px] text-muted">API</p>
-          <h2 className="display mt-5 text-[clamp(36px,4.2vw,54px)]">Every winner is an endpoint.</h2>
+          <h2 className="display mt-5 text-[clamp(36px,4.2vw,54px)]">Every winner is an endpoint, and a download.</h2>
           <p className="mt-6 max-w-[440px] text-[16px] leading-relaxed text-muted">
-            Per-account API keys, hashed at rest. Per-model request and latency tracking. Corrections flow back in as
-            training data so the next version is better than this one.
+            Call it behind a per-account API key, hashed at rest, with per-model request and latency tracking. Or
+            download the weights and serve it yourself. Corrections flow back in as training data either way.
           </p>
         </Reveal>
         <Reveal delay={0.08} className="min-w-0">
           <pre className="scroll-thin overflow-x-auto rounded-2xl bg-ink p-6 font-mono text-[12.5px] leading-[1.75] text-white/80">
-{`curl $RML_HOST/v1/models/expense-categorizer-3f2a/predict \\
-  -H "Authorization: Bearer $RML_KEY" \\
-  -d '{"inputs": ["UBER *TRIP SAN FRANCISCO CA | $23.10"]}'
+{`curl $ASCENT_HOST/v1/models/ticket-router-3f2a/predict \\
+  -H "Authorization: Bearer $ASCENT_KEY" \\
+  -d '{"inputs": ["card declined at checkout, says limit reached"]}'
 
 `}<span className="text-white/60">{`# 200 OK  ·  0.9ms`}</span>{`
 {
   "predictions": [{
-    "label": `}<span className="text-solar">{`"Ground Transportation"`}</span>{`,
+    "label": `}<span className="text-solar">{`"billing"`}</span>{`,
     "confidence": 0.97,
     "top": [ ... ]
   }]
 }`}
           </pre>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------- contact */
+
+const CALL_STEPS = [
+  { title: "You bring the problem", body: "Whatever it is: an inbox, a queue, a spreadsheet nobody wants to own. Tell us what a good answer looks like." },
+  { title: "We build the system around the right model", body: "Candidates from tiny to 16B parameters compete on your held-out rows; the winner is the one that fits your job, not the biggest one for rent." },
+  { title: "You walk away owning it", body: "The weights, the spec, the scorecard and the serving setup are yours. Keep training it on your own corrections, on your own machines." },
+];
+
+export function Contact() {
+  const [prompt, setPrompt] = useState<string | null>(null);
+  useEffect(() => {
+    const onPrompt = (e: Event) => setPrompt((e as CustomEvent<string>).detail || null);
+    window.addEventListener(PROMPT_EVENT, onPrompt);
+    return () => window.removeEventListener(PROMPT_EVENT, onPrompt);
+  }, []);
+  return (
+    <section id="contact" className="border-t border-line bg-paper">
+      <div className="mx-auto grid max-w-[1240px] gap-12 px-5 py-28 md:grid-cols-[minmax(0,6fr)_minmax(0,6fr)] md:items-center md:px-8 md:py-36">
+        <Reveal>
+          <p className="text-[13px] text-muted">Book a call</p>
+          <h2 className="display mt-5 max-w-[14ch] text-[clamp(36px,4.6vw,60px)]">Tell us what you&apos;re stuck on.</h2>
+          <p className="mt-6 max-w-[460px] text-[16px] leading-relaxed text-muted">
+            Thirty minutes with the people who build the models. Bring a sample of the rows, or just the sentence you
+            typed into the box at the top of this page, and we&apos;ll tell you what we&apos;d build and what it would cost.
+          </p>
+          {prompt && (
+            <motion.div
+              data-testid="contact-prompt"
+              initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }}
+              className="mt-8 max-w-[460px] rounded-2xl border border-line-soft bg-white px-5 py-4"
+            >
+              <div className="font-mono text-[11px] uppercase tracking-[0.08em] text-muted">you described</div>
+              <p className="mt-2 text-[15px] leading-relaxed text-ink/85">{prompt}</p>
+              <p className="mt-2 text-[12.5px] text-muted">Saved for the call. We&apos;ll start from here.</p>
+            </motion.div>
+          )}
+        </Reveal>
+        <Reveal delay={0.08}>
+          <div className="rounded-3xl bg-ink p-7 text-white md:p-10">
+            <div className="font-mono text-[11px] uppercase tracking-[0.08em] text-white/60">what happens on the call</div>
+            <ol className="mt-6 space-y-6">
+              {CALL_STEPS.map((step, i) => (
+                <li key={step.title} className="grid grid-cols-[32px_1fr] gap-4">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 font-mono text-[12px] text-solar">{i + 1}</span>
+                  <div>
+                    <div className="text-[17px] tracking-[-0.015em]">{step.title}</div>
+                    <p className="mt-1 text-[14px] leading-relaxed text-white/60">{step.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <div className="mt-10 flex flex-col gap-3 border-t border-white/10 pt-8 sm:flex-row sm:items-center sm:justify-between">
+              <ButtonLink href={BOOKING_URL} target="_blank" rel="noreferrer" variant="solar" size="lg" className="shrink-0 whitespace-nowrap">
+                Book a call <ArrowUpRight className="h-4 w-4" />
+              </ButtonLink>            </div>
+          </div>
         </Reveal>
       </div>
     </section>
@@ -282,8 +394,8 @@ export function FinalCta() {
   return (
     <section className="bg-solar">
       <div className="mx-auto flex max-w-[1240px] flex-col items-start justify-between gap-8 px-5 py-20 md:flex-row md:items-end md:px-8 md:py-24">
-        <h2 className="display max-w-[14ch] text-[clamp(40px,5.4vw,76px)] text-ink">Stop renting a genius for data entry.</h2>
-        <ButtonLink href="/signup" variant="ink" size="lg">Build your first model</ButtonLink>
+        <h2 className="display max-w-[14ch] text-[clamp(40px,5.4vw,76px)] text-ink">Stop renting intelligence by the token.</h2>
+        <ButtonLink href={BOOKING_URL} target="_blank" rel="noreferrer" variant="ink" size="lg">Book a call</ButtonLink>
       </div>
     </section>
   );
@@ -294,7 +406,7 @@ export function Footer() {
     <footer className="bg-ink text-white/60">
       <div className="mx-auto flex max-w-[1240px] flex-col gap-6 px-5 py-10 text-[13px] md:flex-row md:items-center md:justify-between md:px-8">
         <Logo dark />
-        <p>Built at the Ramp hackathon. Specialized AI for financial workflows.</p>
+        <p>Ascent Labs. Models you own, built from open weights. Open source is the future.</p>
       </div>
     </footer>
   );

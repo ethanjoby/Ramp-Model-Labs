@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { AuthForm } from "@/components/app/AuthForm";
 
-export const metadata = { title: "Sign in · Ramp Model Labs" };
+export const metadata = { title: "Sign in · Ascent Labs" };
 
 export default function Page() {
   return (

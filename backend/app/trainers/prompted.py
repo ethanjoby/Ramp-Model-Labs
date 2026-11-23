@@ -61,7 +61,7 @@ def render_program(spec: TaskSpec, instruction: str, demos: list[dict]) -> str:
 
 
 def default_instruction(spec: TaskSpec) -> str:
-    return (f"You are a precise financial-operations classifier. Task: {spec.description} "
+    return (f"You are a precise classifier for a business workflow. Task: {spec.description} "
             f"Inputs look like: {spec.input_description or 'free text'}. Pick exactly one label per input.")
 
 

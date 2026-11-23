@@ -3,11 +3,16 @@ from __future__ import annotations
 import asyncio
 from collections import defaultdict
 import json
+import os
 import shutil
 import re
+import tempfile
+import zipfile
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
+from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from pydantic import BaseModel, Field, field_validator
 from sqlmodel import Session, select
 from sse_starlette.sse import EventSourceResponse
@@ -260,6 +265,22 @@ def _own_dep(slug: str, user: User, s: Session) -> Deployment:
     return d
 
 
+def _artifact_kind(path: str | None) -> str | None:
+    """What a download of this model hands over: "weights" (a transformer saved to a folder), "pickle" (a scikit-learn
+    pipeline), "adapter" (a LoRA adapter that lives in the owner's Modal volume) or "prompt" (a prompt program)."""
+    if not path or not os.path.exists(path):
+        return None
+    if os.path.isdir(path):
+        return "weights"
+    if path.endswith(".pkl"):
+        return "pickle"
+    try:
+        with open(path) as f:
+            return "adapter" if "adapter" in json.load(f) else "prompt"
+    except Exception:
+        return None
+
+
 def _dep_out(d: Deployment, s: Session) -> dict:
     c = s.get(Candidate, d.candidate_id)
     lab = s.get(Lab, d.lab_id)
@@ -274,7 +295,67 @@ def _dep_out(d: Deployment, s: Session) -> dict:
             "labels": spec.get("labels", []), "input_description": spec.get("input_description", ""),
             "samples": _sample_texts(stats), "eval_source": stats.get("eval_source"),
             "meets_bar": result.get("meets_bar"), "frontier_measured": (result.get("savings") or {}).get("frontier_measured"),
-            "savings": result.get("savings"), "feedback_count": fb}
+            "savings": result.get("savings"), "feedback_count": fb, "artifact_kind": _artifact_kind(c.artifact_path if c else None)}
+
+
+_HOWTO = {
+    "weights": """Load with Hugging Face transformers (pip install torch transformers safetensors):
+
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
+    model = AutoModelForSequenceClassification.from_pretrained("./model")
+    tok = AutoTokenizer.from_pretrained("./model")
+
+If the folder holds meta.json and delta.safetensors instead of full weights, it is a delta over an open base model:
+load the base named in meta.json with num_labels=len(labels), then model.load_state_dict(delta, strict=False).
+labels.json maps output indices to your labels. Keep training it with your own rows whenever you like.""",
+    "pickle": """A scikit-learn Pipeline (pip install scikit-learn; the embedding specialist also needs torch + transformers
+and the app.trainers.embedding module on the path):
+
+    import pickle
+    pipe = pickle.load(open("model.pkl", "rb"))
+    pipe.predict(["some input"]); pipe.predict_proba(["some input"])
+
+Only unpickle files you trained yourself; a pickle runs code when it loads.""",
+    "adapter": """A LoRA adapter trained on your Modal account. The weights live in your Modal volume at the path in model.json:
+
+    modal volume get rml-adapters <path-after-/adapters/> ./adapter
+
+Then load the open base model named in model.json with transformers, wrap it with peft.PeftModel.from_pretrained(base, "./adapter"),
+and score each label's likelihood with the instruction in model.json (that is how the endpoint serves it).""",
+    "prompt": """A prompt program: model.json holds the system prompt, the label list and the model it was tuned for.
+Send the system prompt plus "Input: <text>" to that model, or any other, and read the label back.""",
+}
+
+
+@api.get("/deployments/{slug}/artifact")
+def download_artifact(slug: str, user: User = Depends(current_user), s: Session = Depends(get_session)):
+    """Hand the owner their model: the trained weights (or pipeline, adapter pointer or prompt program), the spec,
+    the held-out scores and a README on loading it elsewhere. The point of training on open weights is that
+    nothing here depends on us."""
+    d = _own_dep(slug, user, s)
+    c = s.get(Candidate, d.candidate_id)
+    kind = _artifact_kind(c.artifact_path if c else None)
+    if not c or not kind:
+        raise HTTPException(404, "This model has no downloadable artifact.")
+    lab = s.get(Lab, d.lab_id)
+    tmp = tempfile.NamedTemporaryFile(prefix="rml-model-", suffix=".zip", delete=False)
+    tmp.close()
+    with zipfile.ZipFile(tmp.name, "w", zipfile.ZIP_DEFLATED) as z:
+        path = c.artifact_path
+        if kind == "weights":
+            for name in sorted(os.listdir(path)):
+                z.write(os.path.join(path, name), f"model/{name}")
+        else:
+            z.write(path, "model.pkl" if kind == "pickle" else "model.json")
+        z.writestr("spec.json", json.dumps(lab.spec or {}, indent=2))
+        z.writestr("metrics.json", json.dumps({"candidate": c.display_name, "family": c.family, "metrics": c.metrics or {},
+                                               "dataset": lab.dataset_stats or {}}, indent=2))
+        z.writestr("README.txt", f"{d.name}\n{'=' * len(d.name)}\n\nModel: {c.display_name}\nLabels: {', '.join((lab.spec or {}).get('labels', []))}\n"
+                                 f"Held-out accuracy: {(c.metrics or {}).get('accuracy')} on {(c.metrics or {}).get('n_eval')} rows "
+                                 f"({(lab.dataset_stats or {}).get('eval_source')})\n\n{_HOWTO[kind]}\n\n"
+                                 "spec.json is the task spec, metrics.json the full scorecard (slices, calibration, confusion matrix).\n")
+    return FileResponse(tmp.name, media_type="application/zip", filename=f"{d.slug}-model.zip",
+                        background=BackgroundTask(os.remove, tmp.name))
 
 
 @api.get("/deployments")

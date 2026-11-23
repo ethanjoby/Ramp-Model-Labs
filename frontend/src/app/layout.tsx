@@ -6,8 +6,8 @@ import "./globals.css";
 const sans = Geist({ variable: "--font-sans-face", subsets: ["latin"] });
 const mono = IBM_Plex_Mono({ variable: "--font-mono-face", subsets: ["latin"], weight: ["400", "500"] });
 
-const TITLE = "Ramp Model Labs";
-const DESCRIPTION = "Describe a financial workflow in one prompt. Get a cheap, specialized model that beats general-purpose AI on it.";
+const TITLE = "Ascent Labs";
+const DESCRIPTION = "Bring us the problem. We build the AI system that solves it on the best open model for the job, and you keep the weights.";
 
 // Social cards need absolute URLs; the deployment sets the host, local dev falls back to the dev server.
 function siteUrl(): URL {

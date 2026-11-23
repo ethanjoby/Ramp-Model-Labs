@@ -20,12 +20,12 @@ export function Mark({ className, strokeWidth = 2.4 }: { className?: string; str
 
 export function Logo({ dark = false, className, compact = false }: { dark?: boolean; className?: string; compact?: boolean }) {
   return (
-    <Link href="/" className={clsx("group inline-flex items-center gap-2.5", className)} aria-label="Ramp Model Labs home">
+    <Link href="/" className={clsx("group inline-flex items-center gap-2.5", className)} aria-label="Ascent Labs home">
       <Mark className={clsx("h-[26px] w-[26px] transition-transform duration-200 ease-[var(--ease-std)] group-hover:rotate-[30deg]", dark ? "text-white" : "text-ink")} />
       {!compact && (
         <span className={clsx("text-[15.5px] tracking-[-0.025em]", dark ? "text-white" : "text-ink")}>
-          <span className="font-semibold">ramp</span>
-          <span className={clsx("ml-1.5 font-normal", dark ? "text-white/60" : "text-ink/55")}>model labs</span>
+          <span className="font-semibold">ascent</span>
+          <span className={clsx("ml-1.5 font-normal", dark ? "text-white/60" : "text-ink/55")}>labs</span>
         </span>
       )}
     </Link>

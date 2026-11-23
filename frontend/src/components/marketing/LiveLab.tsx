@@ -3,7 +3,7 @@
 import { AnimatePresence, motion, useInView } from "motion/react";
 import { Crown, RotateCcw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import demo from "./demo-lab.json";
+import demo from "./demo-lab-full.json";
 import { AgentFeed, Leaderboard, StageRail } from "@/components/lab/parts";
 import { ms, multiple, num, pct, size, usd } from "@/lib/format";
 import { EASE_OUT } from "@/lib/motion";
@@ -86,12 +86,13 @@ export function LiveLab() {
     <section id="demo" className="bg-paper">
       <div className="mx-auto max-w-[1240px] px-5 py-24 md:px-8 md:py-32">
         <div className="max-w-[720px]">
-          <p className="text-[13px] text-muted">A recorded run</p>
+          <p className="text-[13px] text-muted">An illustrative run</p>
           <h2 className="display mt-4 text-[clamp(36px,4.6vw,60px)]">Watch the agents build one.</h2>
           <p className="mt-6 text-[16px] leading-relaxed text-muted">
-            Recorded on 30 October 2026 in offline mode, {seconds} seconds uncut. Nothing below is a mock-up: these are
-            the events, candidates and held-out scores one lab produced from the prompt in the header, replayed through
-            the same code that renders the product.
+            An illustrative replay of one lab, {seconds} seconds. Naive Bayes and the SVM are the events and scores from
+            a real offline run on 30 October 2026. The other {candidates.length - 2} models (DeepSeek, Qwen, Kimi, MiniMax, GLM,
+            Claude and the fine-tunes) are added to show the full roster, and their scores are illustrative, not measured.
+            It is replayed through the same code that renders the product.
           </p>
         </div>
 
@@ -116,7 +117,7 @@ export function LiveLab() {
                 <Leaderboard candidates={candidates} target={state.spec?.target_accuracy} compact />
                 {benched.length > 0 && (
                   <p className="mt-2 px-3 text-[11.5px] leading-snug text-ink/55">
-                    {benched.length} of {candidates.length} candidates were benched in this recording: {why}. The table
+                    {benched.length} of {candidates.length} candidates were benched in this replay: {why}. The table
                     shows the {candidates.length - benched.length} that ran.
                   </p>
                 )}
@@ -153,7 +154,9 @@ export function LiveLab() {
             </div>
           </div>
         </div>
+
       </div>
     </section>
   );
 }
+

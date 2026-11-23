@@ -22,9 +22,9 @@ const DistillScene = dynamic(() => import("@/components/three/DistillScene"), { 
 const STARTERS = [
   "Categorize card transactions into GL codes, cheap enough to run on every swipe",
   "Screen transactions for fraud and flag anything suspicious",
-  "Triage incoming invoices by type and urgency",
-  "Route financial support tickets to the right team",
-  "Reconcile bank lines against the ledger and flag anything that doesn't match",
+  "Route support tickets to billing, account access, bugs, or sales",
+  "Categorize product listings into our catalog taxonomy from title and description",
+  "Triage insurance claims: fast-track, adjuster review, or investigate",
 ];
 
 type Attachment = { name: string; raw: string; count: number; labeled: number };
@@ -229,7 +229,7 @@ export function Copilot() {
                     {user ? `What should we automate, ${user.name.split(" ")[0]}?` : "What should we automate?"}
                   </h1>
                   <p className="mt-4 max-w-[50ch] text-[15px] leading-relaxed text-white/65">
-                    Describe a financial workflow. The agents generate data, train competing models, test them on held-out examples, and deploy the cheapest one that clears the bar.
+                    Describe the problem you need solved, in any industry. The agents generate data, train competing models, test them on held-out examples, and deploy the cheapest one that clears the bar.
                   </p>
                 </div>
               </div>

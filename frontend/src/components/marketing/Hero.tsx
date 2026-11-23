@@ -1,26 +1,26 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { ArrowRight, CornerDownLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Logo } from "@/components/ui/Logo";
 import { ButtonLink } from "@/components/ui/Button";
+import { BOOKING_URL, PROMPT_EVENT } from "@/lib/contact";
 import { EASE_OUT } from "@/lib/motion";
 
 const DistillScene = dynamic(() => import("@/components/three/DistillScene"), { ssr: false });
 
 const EXAMPLES = [
-  "Categorize corporate card transactions into our 12 GL expense codes. Keep it cheap.",
-  "Flag card transactions that look like fraud from the risk signals. Needs 90% accuracy.",
-  "Route inbound support tickets to card, reimbursement, bill pay, or accounting queues.",
-  "Triage AP invoices: approve, needs review, likely duplicate, or reject.",
-  "Reconcile bank lines against the ledger and flag amount mismatches, timing gaps, and duplicates.",
+  "Our support inbox gets 3,000 tickets a week and two people route them by hand.",
+  "We pay a vendor per call to categorize our product catalog and it still gets half of them wrong.",
+  "Claims sit for days before anyone decides if they're fast-track or need an adjuster.",
+  "IT tickets all look urgent; we need P1 to P4 from the description alone.",
+  "Our accountant codes 4,000 card transactions a month into GL categories by hand.",
+  "We moderate marketplace listings for counterfeits and off-platform payments one at a time.",
 ];
 
 export function Hero() {
-  const router = useRouter();
   const section = useRef<HTMLElement>(null);
   const [value, setValue] = useState("");
   const [ex, setEx] = useState(0);
@@ -40,10 +40,12 @@ export function Hero() {
     return () => clearInterval(id);
   }, [focused, hovered, value, reduced]);
 
+  // The public site has no sign-in: the prompt is handed to the contact section, where it waits next to the booking calendar.
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const prompt = (value || EXAMPLES[ex]).trim();
-    router.push(`/signup?prompt=${encodeURIComponent(prompt)}`);
+    window.dispatchEvent(new CustomEvent(PROMPT_EVENT, { detail: prompt }));
+    document.getElementById("contact")?.scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" });
   };
 
   return (
@@ -57,24 +59,23 @@ export function Hero() {
           <a href="#demo" className="transition-colors hover:text-white">See a run</a>
           <a href="#how" className="transition-colors hover:text-white">How it works</a>
           <a href="#cost" className="transition-colors hover:text-white">Cost</a>
+          <a href="#own" className="transition-colors hover:text-white">Why open</a>
           <a href="#workflows" className="transition-colors hover:text-white">Workflows</a>
           <a href="#api" className="transition-colors hover:text-white">API</a>
+          <a href="#contact" className="transition-colors hover:text-white">Contact</a>
         </nav>
-        <div className="flex items-center gap-1.5">
-          <ButtonLink href="/login" variant="ghost-dark" size="sm">Sign in</ButtonLink>
-          <ButtonLink href="/signup" variant="solar" size="sm">Start building</ButtonLink>
-        </div>
+        <ButtonLink href={BOOKING_URL} target="_blank" rel="noreferrer" variant="solar" size="sm">Book a call</ButtonLink>
       </header>
 
       {/* The entrance is CSS (.rise), so the server HTML is readable before hydration and without JS. */}
       <motion.div style={{ opacity, y }} className="mx-auto flex min-h-[calc(100svh-84px)] max-w-[1240px] flex-col justify-start px-5 pb-[38vh] pt-6 md:justify-center md:px-8 md:pb-24 md:pt-0">
         <h1 className="rise display max-w-[11ch] text-[clamp(50px,8.6vw,124px)] [--rise-y:28px] [animation-duration:0.8s]">
-          One prompt in. A specialist model out.
+          Bring the problem. Keep the model.
         </h1>
-        <p className="rise mt-7 max-w-[560px] text-[17px] leading-relaxed text-white/70 [animation-delay:120ms]">
-          Describe a financial workflow in plain English. A team of agents writes the spec, builds the data,
-          trains and fine-tunes competing models, scores every one on held-out examples, and ships the cheapest
-          that clears your bar.
+        <p className="rise mt-7 max-w-[580px] text-[17px] leading-relaxed text-white/70 [animation-delay:120ms]">
+          Tell us what you need help with, whatever the problem is. We build an AI system that solves it, on the
+          best model for your job rather than the one a big vendor wants you renting by the token. It is trained from
+          open weights, so you own it, keep training it, and run it yourself. Open source is the future.
         </p>
 
         <form
@@ -89,9 +90,9 @@ export function Hero() {
               onChange={(e) => setValue(e.target.value)}
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
-              aria-label="Describe the model you need"
+              aria-label="Describe the problem you need solved"
               className="h-11 w-full bg-transparent text-[15px] text-ink outline-none placeholder:text-transparent"
-              placeholder="Describe the model you need"
+              placeholder="Describe the problem you need solved"
             />
             {!value && (
               <div data-testid="hero-example" className="pointer-events-none absolute inset-0 flex items-center overflow-hidden">
@@ -112,11 +113,11 @@ export function Hero() {
             type="submit"
             className="inline-flex h-11 shrink-0 items-center gap-2 rounded-xl bg-ink px-4 text-sm font-medium text-white transition-[background-color,transform] duration-150 hover:bg-ink-3 active:scale-[0.97]"
           >
-            Build it <CornerDownLeft className="h-4 w-4" />
+            Tell us <CornerDownLeft className="h-4 w-4" />
           </button>
         </form>
         <p className="rise mt-4 hidden items-center gap-2 text-[13px] text-white/60 md:flex [animation-delay:400ms]">
-          Press enter to try the example, or
+          Press enter to bring this to a call, or
           <a href="#demo" className="inline-flex items-center gap-1 text-white/80 underline-offset-4 hover:text-white hover:underline">
             watch a recorded run <ArrowRight className="h-3.5 w-3.5" />
           </a>

@@ -25,7 +25,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Ramp Model Labs", version="1.0.0", lifespan=lifespan,
+app = FastAPI(title="Ascent Labs", version="1.0.0", lifespan=lifespan,
               docs_url="/v1/docs", openapi_url="/v1/openapi.json", redoc_url=None)
 settings = get_settings()
 app.add_middleware(CORSMiddleware, allow_origins=[settings.frontend_origin], allow_credentials=True,
