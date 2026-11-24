@@ -15,7 +15,10 @@ where pushes go:
 - backend: https://github.com/ethanjoby/ascentlabsbackend
 
 `scripts/push-split.sh` adds one snapshot commit of `frontend/` and `backend/` on top of each repository's history
-(commit here first; `scripts/push-split.sh frontend` for one side).
+(commit here first; `scripts/push-split.sh frontend` for one side). The `frontend` and `backend` git remotes exist only
+for that script: never push this repository's `main` to them, since its tree is the whole monorepo and a forced push
+would overwrite the split repository. `origin` is the monorepo itself (github.com/ethanjoby/Ramp-Model-Labs), where a
+plain `git push` keeps the full history backed up.
 
 ## Run it
 
