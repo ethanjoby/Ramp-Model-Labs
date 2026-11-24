@@ -186,7 +186,8 @@ export function Leaderboard({ candidates, target, onSelect, selected, compact = 
   const showRobust = !compact && rows.some((r) => r.metrics.robust_accuracy != null);
   return (
     <div className="overflow-x-auto scroll-thin">
-      <table data-testid="leaderboard" className={clsx("w-full text-left text-[13px]", showUnseen || showRobust ? "min-w-[560px]" : "min-w-[460px]")}>
+      {/* The compact card (the home-page replay) fits a phone: the cost column waits for a wider screen. */}
+      <table data-testid="leaderboard" className={clsx("w-full text-left text-[13px]", compact ? "min-w-[320px]" : showUnseen || showRobust ? "min-w-[560px]" : "min-w-[460px]")}>
         <thead>
           <tr className="text-[11.5px] text-muted">
             <th className="py-2 pl-3 font-normal">Candidate</th>
@@ -194,7 +195,7 @@ export function Leaderboard({ candidates, target, onSelect, selected, compact = 
             {showUnseen && <th className="py-2 pl-4 text-right font-normal" title={UNSEEN_TITLE}><abbr className="no-underline" title={UNSEEN_TITLE}>Unseen</abbr></th>}
             {showRobust && <th className="py-2 pl-4 text-right font-normal" title={ROBUST_TITLE}><abbr className="no-underline" title={ROBUST_TITLE}>Robust</abbr></th>}
             <th className="py-2 pl-4 text-right font-normal">p50</th>
-            <th className="py-2 pl-4 pr-3 text-right font-normal">Cost / 1k</th>
+            <th className={clsx("py-2 pl-4 pr-3 text-right font-normal", compact && "hidden sm:table-cell")}>Cost / 1k</th>
           </tr>
         </thead>
         <tbody>
@@ -269,7 +270,7 @@ export function Leaderboard({ candidates, target, onSelect, selected, compact = 
                     </td>
                   )}
                   <td className="tnum py-2.5 pl-4 text-right font-mono text-[12.5px]">{ms(c.metrics.latency_p50_ms)}</td>
-                  <td className="tnum py-2.5 pl-4 pr-3 text-right font-mono text-[12.5px]">
+                  <td className={clsx("tnum py-2.5 pl-4 pr-3 text-right font-mono text-[12.5px]", compact && "hidden sm:table-cell")}>
                     {usd(c.metrics.cost_per_1k)}{c.metrics.cost_estimated && c.status === "done" && <span className="text-ink/40" title="Serving cost estimated from measured throughput at list price"> est.</span>}
                   </td>
                 </motion.tr>

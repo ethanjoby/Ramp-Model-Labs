@@ -306,7 +306,7 @@ export function ApiSection() {
           </p>
         </Reveal>
         <Reveal delay={0.08} className="min-w-0">
-          <pre className="scroll-thin overflow-x-auto rounded-2xl bg-ink p-6 font-mono text-[12.5px] leading-[1.75] text-white/80">
+          <pre className="scroll-thin overflow-x-auto whitespace-pre-wrap break-words rounded-2xl bg-ink p-5 font-mono text-[11.5px] leading-[1.75] text-white/80 md:whitespace-pre md:p-6 md:text-[12.5px]">
 {`curl $ASCENT_HOST/v1/models/ticket-router-3f2a/predict \\
   -H "Authorization: Bearer $ASCENT_KEY" \\
   -d '{"inputs": ["card declined at checkout, says limit reached"]}'

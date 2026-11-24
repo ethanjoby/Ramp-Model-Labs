@@ -1,7 +1,7 @@
 "use client";
 
 import { animate, motion, useInView, useMotionValue, useReducedMotion, useTransform } from "motion/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import demo from "./bench-real.json";
 import { Confusion, ErrorList, ParetoChart } from "@/components/lab/parts";
 import { ms, multiple, num, pct, size, usd } from "@/lib/format";
@@ -104,7 +104,10 @@ function ParetoCard() {
 const byKey = (rows: CandidateRow[], f: (c: CandidateRow) => number, dir: 1 | -1 = 1) => [...rows].sort((a, b) => dir * (f(a) - f(b)));
 const tone = (c: CandidateRow) => ({ hot: c.key === WINNER, tone: FAMILY_TONE[c.family] });
 
+const PHONE_CARDS = 3;  // the rest sit behind a button on small screens, where twelve stacked charts run to 5,000px
+
 export function Benchmarks() {
+  const [all, setAll] = useState(false);
   const m = (c: CandidateRow) => c.metrics;
   const secs = (v: number) => (v < 60 ? `${v.toFixed(1)}s` : `${(v / 60).toFixed(1)}min`);
   const labels = Object.entries(demo.dataset.label_counts as Record<string, number>).sort((a, b) => b[1] - a[1]);
@@ -144,7 +147,7 @@ export function Benchmarks() {
           <span className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full bg-solar" />Selected</span>
         </div>
 
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={`mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 ${all ? "" : "[&>*:nth-child(n+4)]:hidden sm:[&>*:nth-child(n+4)]:block"}`}>
           <Card title="Accuracy against cost" sub="Hover a dot for the model">
             <ParetoCard />
           </Card>
@@ -239,6 +242,13 @@ export function Benchmarks() {
             />
           </Card>
         </div>
+        <button
+          type="button"
+          onClick={() => setAll((v) => !v)}
+          className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-full border border-line bg-white text-[13px] font-medium text-ink transition-colors hover:border-ink/40 sm:hidden"
+        >
+          {all ? "Show fewer charts" : `Show the other ${12 - PHONE_CARDS} charts`}
+        </button>
       </div>
     </section>
   );

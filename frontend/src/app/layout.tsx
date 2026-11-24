@@ -18,12 +18,17 @@ function siteUrl(): URL {
   }
 }
 
+// opengraph-image.tsx, twitter-image.tsx and apple-icon.tsx next to this file render the card and icon that
+// Messages, Slack and social sites show for a link; Next wires them in here. They need metadataBase to be the
+// public URL (NEXT_PUBLIC_SITE_URL), because previews only load absolute image URLs.
 export const metadata: Metadata = {
   metadataBase: siteUrl(),
-  title: TITLE,
+  title: { default: TITLE, template: `%s · ${TITLE}` },
   description: DESCRIPTION,
-  openGraph: { type: "website", siteName: TITLE, title: TITLE, description: DESCRIPTION, url: "/" },
-  twitter: { card: "summary", title: TITLE, description: DESCRIPTION },
+  applicationName: TITLE,
+  openGraph: { type: "website", siteName: TITLE, title: TITLE, description: DESCRIPTION, url: "/", locale: "en_US" },
+  twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
+  appleWebApp: { title: TITLE },
 };
 
 export const viewport: Viewport = { themeColor: "#0c0a08" };

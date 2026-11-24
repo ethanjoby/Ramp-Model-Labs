@@ -16,6 +16,7 @@ import { applyLabEvent, emptyLabState, type LabState } from "@/lib/useLab";
  */
 
 const EVENTS = demo.events as LabEvent[];
+const ROSTER = (demo.candidates as unknown as CandidateRow[]).length;  // known before the replay starts
 const SPEED = 0.7;
 const MIN_GAP_MS = 160;
 
@@ -90,7 +91,7 @@ export function LiveLab() {
           <h2 className="display mt-4 text-[clamp(36px,4.6vw,60px)]">Watch the agents build one.</h2>
           <p className="mt-6 text-[16px] leading-relaxed text-muted">
             An illustrative replay of one lab, {seconds} seconds. Naive Bayes and the SVM are the events and scores from
-            a real offline run on 30 October 2026. The other {candidates.length - 2} models (DeepSeek, Qwen, Kimi, MiniMax, GLM,
+            a real offline run on 30 October 2026. The other {Math.max(0, ROSTER - 2)} models (DeepSeek, Qwen, Kimi, MiniMax, GLM,
             Claude and the fine-tunes) are added to show the full roster, and their scores are illustrative, not measured.
             It is replayed through the same code that renders the product.
           </p>
@@ -111,7 +112,8 @@ export function LiveLab() {
             </button>
           </div>
           <div className="grid lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-            <div className="border-b border-line-soft p-5 lg:border-b-0 lg:border-r">
+            {/* min-w-0: a grid item otherwise grows to its table's min width and the whole card clips on a phone */}
+            <div className="min-w-0 border-b border-line-soft p-5 lg:border-b-0 lg:border-r">
               <StageRail stage={state.stage} />
               <div className="-mx-2 mt-6">
                 <Leaderboard candidates={candidates} target={state.spec?.target_accuracy} compact />
@@ -149,8 +151,8 @@ export function LiveLab() {
                 )}
               </AnimatePresence>
             </div>
-            <div className="p-3">
-              <AgentFeed events={state.events} live={playing} className="h-[440px]" />
+            <div className="min-w-0 p-3">
+              <AgentFeed events={state.events} live={playing} className="h-[360px] md:h-[440px]" />
             </div>
           </div>
         </div>
