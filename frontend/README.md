@@ -34,3 +34,15 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Brand assets
+
+The logo is rendered from code (`src/lib/brand-image.tsx`), so these links always match the site. Prefix them with the
+deployed host, e.g. `https://your-domain/logo.png`:
+
+- `/logo.png` — horizontal lockup on dark, 1600×480
+- `/logo-light.png` — horizontal lockup on light, 1600×480
+- `/logo-mark.png` — the square mark alone, 1024×1024 (avatars, profile pictures)
+- `/opengraph-image` — the 1200×630 link-preview card; `/apple-icon` — the 180×180 touch icon
+
+Link previews in Messages, Slack and social sites need `NEXT_PUBLIC_SITE_URL` set to the public URL.
