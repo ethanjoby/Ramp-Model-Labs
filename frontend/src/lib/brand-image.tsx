@@ -22,6 +22,9 @@ function Mark({ px, stroke = 2.4, color = "white" }: { px: number; stroke?: numb
 
 export const OG_SIZE = { width: 1200, height: 630 };
 export const ICON_SIZE = { width: 180, height: 180 };
+export const LOCKUP_SIZE = { width: 1600, height: 480 };
+export const MARK_SIZE = { width: 1024, height: 1024 };
+const PAPER = "#f4f2f0";
 
 /** The social card: wordmark, the headline, one line of what we do. */
 export function socialCard() {
@@ -68,5 +71,35 @@ export function touchIcon() {
       </div>
     ),
     ICON_SIZE,
+  );
+}
+
+/** The horizontal logo at /logo.png (on ink) and /logo-light.png (on paper): mark plus "ascent labs" wordmark. */
+export function logoLockup(theme: "dark" | "light" = "dark") {
+  const dark = theme === "dark";
+  return new ImageResponse(
+    (
+      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 56,
+                    background: dark ? INK : PAPER, color: dark ? "white" : INK, fontFamily: "sans-serif" }}>
+        <Mark px={240} stroke={2.4} color={dark ? "white" : INK} />
+        <div style={{ display: "flex", fontSize: 156, letterSpacing: -6, lineHeight: 1 }}>
+          <span style={{ fontWeight: 700 }}>ascent</span>
+          <span style={{ marginLeft: 44, color: dark ? "rgba(255,255,255,0.6)" : "rgba(12,10,8,0.55)" }}>labs</span>
+        </div>
+      </div>
+    ),
+    LOCKUP_SIZE,
+  );
+}
+
+/** The square mark alone at /logo-mark.png, for avatars and profile pictures. */
+export function logoMark() {
+  return new ImageResponse(
+    (
+      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: INK }}>
+        <Mark px={680} stroke={2.2} />
+      </div>
+    ),
+    MARK_SIZE,
   );
 }

@@ -65,3 +65,665 @@ Issues? Report them at https://github.com/firebase/firebase-tools/issues and att
  
 [debug] [2026-11-07T21:53:04.748Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
 [debug] [2026-11-07T21:53:04.749Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-11-23T20:21:50.230Z] ----------------------------------------------------------------------
+[debug] [2026-11-23T20:21:50.231Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-23T20:21:50.231Z] CLI Version:   14.23.0
+[debug] [2026-11-23T20:21:50.232Z] Platform:      darwin
+[debug] [2026-11-23T20:21:50.232Z] Node Version:  v26.5.0
+[debug] [2026-11-23T20:21:50.232Z] Time:          Mon Nov 23 2026 12:21:50 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-23T20:21:50.232Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-23T20:21:50.233Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-11-23T20:21:50.390Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-23T20:21:50.390Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-23T20:21:50.655Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-23T20:21:50.655Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-23T20:21:50.658Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[debug] [2026-11-23T20:21:50.659Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-23T20:21:53.815Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-23T20:21:53.910Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-11-23T20:21:53.910Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-11-23T20:22:29.700Z] ----------------------------------------------------------------------
+[debug] [2026-11-23T20:22:29.702Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-23T20:22:29.702Z] CLI Version:   14.23.0
+[debug] [2026-11-23T20:22:29.702Z] Platform:      darwin
+[debug] [2026-11-23T20:22:29.702Z] Node Version:  v26.5.0
+[debug] [2026-11-23T20:22:29.702Z] Time:          Mon Nov 23 2026 12:22:29 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-23T20:22:29.702Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-23T20:22:29.879Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-23T20:22:29.880Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-23T20:22:30.220Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-23T20:22:30.221Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-23T20:22:30.225Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-23T20:22:30.226Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-23T20:22:33.446Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-23T20:28:01.341Z] ----------------------------------------------------------------------
+[debug] [2026-11-23T20:28:01.343Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-23T20:28:01.343Z] CLI Version:   14.23.0
+[debug] [2026-11-23T20:28:01.343Z] Platform:      darwin
+[debug] [2026-11-23T20:28:01.343Z] Node Version:  v26.5.0
+[debug] [2026-11-23T20:28:01.343Z] Time:          Mon Nov 23 2026 12:28:01 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-23T20:28:01.343Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-23T20:28:01.499Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-23T20:28:01.499Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-23T20:28:01.771Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-23T20:28:01.771Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-23T20:28:01.775Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-23T20:28:01.775Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-23T20:28:05.021Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-23T20:28:33.909Z] ----------------------------------------------------------------------
+[debug] [2026-11-23T20:28:33.911Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-23T20:28:33.911Z] CLI Version:   14.23.0
+[debug] [2026-11-23T20:28:33.911Z] Platform:      darwin
+[debug] [2026-11-23T20:28:33.911Z] Node Version:  v26.5.0
+[debug] [2026-11-23T20:28:33.911Z] Time:          Mon Nov 23 2026 12:28:33 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-23T20:28:33.911Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-23T20:28:34.063Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-23T20:28:34.063Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-23T20:28:34.320Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-23T20:28:34.320Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-23T20:28:34.324Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-23T20:28:34.324Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-23T20:28:37.550Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-23T20:29:53.723Z] ----------------------------------------------------------------------
+[debug] [2026-11-23T20:29:53.725Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-23T20:29:53.725Z] CLI Version:   14.23.0
+[debug] [2026-11-23T20:29:53.725Z] Platform:      darwin
+[debug] [2026-11-23T20:29:53.725Z] Node Version:  v26.5.0
+[debug] [2026-11-23T20:29:53.725Z] Time:          Mon Nov 23 2026 12:29:53 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-23T20:29:53.725Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-23T20:29:53.887Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-23T20:29:53.887Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-23T20:29:54.153Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-23T20:29:54.153Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-23T20:29:54.157Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-23T20:29:54.158Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-23T20:29:57.316Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-23T20:30:19.565Z] ----------------------------------------------------------------------
+[debug] [2026-11-23T20:30:19.566Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-23T20:30:19.566Z] CLI Version:   14.23.0
+[debug] [2026-11-23T20:30:19.567Z] Platform:      darwin
+[debug] [2026-11-23T20:30:19.567Z] Node Version:  v26.5.0
+[debug] [2026-11-23T20:30:19.567Z] Time:          Mon Nov 23 2026 12:30:19 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-23T20:30:19.567Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-23T20:30:19.715Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-23T20:30:19.715Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-23T20:30:19.976Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-23T20:30:19.976Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-23T20:30:19.980Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-23T20:30:19.981Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-23T20:30:23.020Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-23T22:20:58.954Z] ----------------------------------------------------------------------
+[debug] [2026-11-23T22:20:58.955Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-23T22:20:58.956Z] CLI Version:   14.23.0
+[debug] [2026-11-23T22:20:58.956Z] Platform:      darwin
+[debug] [2026-11-23T22:20:58.956Z] Node Version:  v26.5.0
+[debug] [2026-11-23T22:20:58.956Z] Time:          Mon Nov 23 2026 14:20:58 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-23T22:20:58.956Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-23T22:20:59.105Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-23T22:20:59.105Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-23T22:20:59.396Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-23T22:20:59.397Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-23T22:20:59.407Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-23T22:20:59.408Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-23T22:21:02.694Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-23T22:21:15.644Z] ----------------------------------------------------------------------
+[debug] [2026-11-23T22:21:15.645Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-23T22:21:15.646Z] CLI Version:   14.23.0
+[debug] [2026-11-23T22:21:15.646Z] Platform:      darwin
+[debug] [2026-11-23T22:21:15.646Z] Node Version:  v26.5.0
+[debug] [2026-11-23T22:21:15.646Z] Time:          Mon Nov 23 2026 14:21:15 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-23T22:21:15.646Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-23T22:21:15.791Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-23T22:21:15.791Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-23T22:21:16.056Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-23T22:21:16.057Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-23T22:21:16.060Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-23T22:21:16.061Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-23T22:21:19.155Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-23T22:34:31.723Z] ----------------------------------------------------------------------
+[debug] [2026-11-23T22:34:31.726Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-23T22:34:31.727Z] CLI Version:   14.23.0
+[debug] [2026-11-23T22:34:31.727Z] Platform:      darwin
+[debug] [2026-11-23T22:34:31.727Z] Node Version:  v26.5.0
+[debug] [2026-11-23T22:34:31.727Z] Time:          Mon Nov 23 2026 14:34:31 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-23T22:34:31.727Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-23T22:34:31.872Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-23T22:34:31.873Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-23T22:34:32.142Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-23T22:34:32.142Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-23T22:34:32.146Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-23T22:34:32.146Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-23T22:34:35.430Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-23T22:34:50.726Z] ----------------------------------------------------------------------
+[debug] [2026-11-23T22:34:50.728Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-23T22:34:50.728Z] CLI Version:   14.23.0
+[debug] [2026-11-23T22:34:50.728Z] Platform:      darwin
+[debug] [2026-11-23T22:34:50.728Z] Node Version:  v26.5.0
+[debug] [2026-11-23T22:34:50.729Z] Time:          Mon Nov 23 2026 14:34:50 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-23T22:34:50.729Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-23T22:34:50.878Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-23T22:34:50.878Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-23T22:34:51.135Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-23T22:34:51.135Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-23T22:34:51.139Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-23T22:34:51.139Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-23T22:34:54.287Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-24T02:17:54.743Z] ----------------------------------------------------------------------
+[debug] [2026-11-24T02:17:54.745Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-24T02:17:54.745Z] CLI Version:   14.23.0
+[debug] [2026-11-24T02:17:54.745Z] Platform:      darwin
+[debug] [2026-11-24T02:17:54.745Z] Node Version:  v26.5.0
+[debug] [2026-11-24T02:17:54.745Z] Time:          Mon Nov 23 2026 18:17:54 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-24T02:17:54.745Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-24T02:17:54.896Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-24T02:17:54.896Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-24T02:17:55.177Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-24T02:17:55.177Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-24T02:17:55.181Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-24T02:17:55.183Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-24T02:17:58.288Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-24T02:18:19.561Z] ----------------------------------------------------------------------
+[debug] [2026-11-24T02:18:19.562Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-24T02:18:19.563Z] CLI Version:   14.23.0
+[debug] [2026-11-24T02:18:19.563Z] Platform:      darwin
+[debug] [2026-11-24T02:18:19.563Z] Node Version:  v26.5.0
+[debug] [2026-11-24T02:18:19.563Z] Time:          Mon Nov 23 2026 18:18:19 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-24T02:18:19.563Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-24T02:18:19.707Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-24T02:18:19.707Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-24T02:18:19.980Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-24T02:18:19.980Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-24T02:18:19.984Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-24T02:18:19.985Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-24T02:18:23.188Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-24T02:20:23.865Z] ----------------------------------------------------------------------
+[debug] [2026-11-24T02:20:23.868Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-24T02:20:23.868Z] CLI Version:   14.23.0
+[debug] [2026-11-24T02:20:23.868Z] Platform:      darwin
+[debug] [2026-11-24T02:20:23.868Z] Node Version:  v26.5.0
+[debug] [2026-11-24T02:20:23.869Z] Time:          Mon Nov 23 2026 18:20:23 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-24T02:20:23.869Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-24T02:20:24.034Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-24T02:20:24.034Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-24T02:20:24.310Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-24T02:20:24.311Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-24T02:20:24.314Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-24T02:20:24.315Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-24T02:20:27.584Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-24T02:20:40.755Z] ----------------------------------------------------------------------
+[debug] [2026-11-24T02:20:40.756Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-24T02:20:40.756Z] CLI Version:   14.23.0
+[debug] [2026-11-24T02:20:40.757Z] Platform:      darwin
+[debug] [2026-11-24T02:20:40.757Z] Node Version:  v26.5.0
+[debug] [2026-11-24T02:20:40.757Z] Time:          Mon Nov 23 2026 18:20:40 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-24T02:20:40.757Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-24T02:20:40.901Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-24T02:20:40.901Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-24T02:20:41.174Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-24T02:20:41.175Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-24T02:20:41.178Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-24T02:20:41.179Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-24T02:20:44.556Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-24T02:23:15.619Z] ----------------------------------------------------------------------
+[debug] [2026-11-24T02:23:15.621Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-24T02:23:15.621Z] CLI Version:   14.23.0
+[debug] [2026-11-24T02:23:15.621Z] Platform:      darwin
+[debug] [2026-11-24T02:23:15.621Z] Node Version:  v26.5.0
+[debug] [2026-11-24T02:23:15.621Z] Time:          Mon Nov 23 2026 18:23:15 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-24T02:23:15.621Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-24T02:23:15.768Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-24T02:23:15.768Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-24T02:23:16.035Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-24T02:23:16.035Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-24T02:23:16.039Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-24T02:23:16.040Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-24T02:23:19.170Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-24T02:23:33.268Z] ----------------------------------------------------------------------
+[debug] [2026-11-24T02:23:33.270Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-24T02:23:33.270Z] CLI Version:   14.23.0
+[debug] [2026-11-24T02:23:33.270Z] Platform:      darwin
+[debug] [2026-11-24T02:23:33.270Z] Node Version:  v26.5.0
+[debug] [2026-11-24T02:23:33.270Z] Time:          Mon Nov 23 2026 18:23:33 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-24T02:23:33.270Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-24T02:23:33.414Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-24T02:23:33.414Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-24T02:23:33.675Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-24T02:23:33.675Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-24T02:23:33.679Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-24T02:23:33.679Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-24T02:23:36.755Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-24T02:29:15.835Z] ----------------------------------------------------------------------
+[debug] [2026-11-24T02:29:15.837Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-24T02:29:15.837Z] CLI Version:   14.23.0
+[debug] [2026-11-24T02:29:15.837Z] Platform:      darwin
+[debug] [2026-11-24T02:29:15.838Z] Node Version:  v26.5.0
+[debug] [2026-11-24T02:29:15.838Z] Time:          Mon Nov 23 2026 18:29:15 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-24T02:29:15.838Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-24T02:29:15.996Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-24T02:29:15.997Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-24T02:29:16.272Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-24T02:29:16.273Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-24T02:29:16.277Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-24T02:29:16.277Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-24T02:29:19.335Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-24T02:29:30.629Z] ----------------------------------------------------------------------
+[debug] [2026-11-24T02:29:30.631Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-24T02:29:30.631Z] CLI Version:   14.23.0
+[debug] [2026-11-24T02:29:30.631Z] Platform:      darwin
+[debug] [2026-11-24T02:29:30.631Z] Node Version:  v26.5.0
+[debug] [2026-11-24T02:29:30.631Z] Time:          Mon Nov 23 2026 18:29:30 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-24T02:29:30.631Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-24T02:29:30.774Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-24T02:29:30.775Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-24T02:29:31.034Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-24T02:29:31.034Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-24T02:29:31.038Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-24T02:29:31.038Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-24T02:29:34.149Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-24T02:30:01.215Z] ----------------------------------------------------------------------
+[debug] [2026-11-24T02:30:01.217Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-24T02:30:01.217Z] CLI Version:   14.23.0
+[debug] [2026-11-24T02:30:01.217Z] Platform:      darwin
+[debug] [2026-11-24T02:30:01.217Z] Node Version:  v26.5.0
+[debug] [2026-11-24T02:30:01.217Z] Time:          Mon Nov 23 2026 18:30:01 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-24T02:30:01.217Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-24T02:30:01.363Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-24T02:30:01.364Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-24T02:30:01.626Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-24T02:30:01.627Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-24T02:30:01.630Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-24T02:30:01.631Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-24T02:30:04.694Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[debug] [2026-11-24T02:30:17.886Z] ----------------------------------------------------------------------
+[debug] [2026-11-24T02:30:17.888Z] Command:       /opt/homebrew/Cellar/node/26.5.0_1/bin/node /opt/homebrew/bin/firebase emulators:start --only auth --project ramp-model-labs --config e2e/firebase.json
+[debug] [2026-11-24T02:30:17.888Z] CLI Version:   14.23.0
+[debug] [2026-11-24T02:30:17.888Z] Platform:      darwin
+[debug] [2026-11-24T02:30:17.888Z] Node Version:  v26.5.0
+[debug] [2026-11-24T02:30:17.889Z] Time:          Mon Nov 23 2026 18:30:17 GMT-0800 (Pacific Standard Time)
+[debug] [2026-11-24T02:30:17.889Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-11-24T02:30:18.046Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-11-24T02:30:18.046Z] > authorizing via signed-in user (ethanawesome07@gmail.com)
+[info] i  emulators: Starting emulators: auth {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: auth"}}
+[debug] [2026-11-24T02:30:18.408Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2026-11-24T02:30:18.408Z] assigned listening specs for emulators {"user":{"auth":[{"address":"127.0.0.1","family":"IPv4","port":9099}],"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2026-11-24T02:30:18.413Z] Emulator locator file path: /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: It seems that you are running multiple instances of the emulator suite for project ramp-model-labs. This may result in unexpected behavior. 
+[debug] [2026-11-24T02:30:18.413Z] [hub] writing locator at /var/folders/69/5x3twpx9543g5yh924cp4zd00000gn/T/hub-ramp-model-labs.json
+[warn] ⚠  emulators: The Emulator UI is not starting because none of the running emulators have a UI component. {"metadata":{"emulator":{"name":"hub"},"message":"The Emulator UI is not starting because none of the running emulators have a UI component."}}
+[debug] [2026-11-24T02:30:21.696Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────────┬────────────────┐
+│ Emulator       │ Host:Port      │
+├────────────────┼────────────────┤
+│ Authentication │ 127.0.0.1:9099 │
+└────────────────┴────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
