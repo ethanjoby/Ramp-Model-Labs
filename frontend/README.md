@@ -40,9 +40,9 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 The logo is rendered from code (`src/lib/brand-image.tsx`), so these links always match the site. Prefix them with the
 deployed host, e.g. `https://your-domain/logo.png`:
 
-- `/logo.png` — horizontal lockup on dark, 1600×480
-- `/logo-light.png` — horizontal lockup on light, 1600×480
-- `/logo-mark.png` — the square mark alone, 1024×1024 (avatars, profile pictures)
+- `/logo.png` — the mark alone on dark, 1024×1024 (the logo; avatars, profile pictures, booking pages)
+- `/logo-light.png` — the mark alone on light; `/logo-transparent.png` — the mark with no background, for light surfaces
+- `/logo-wordmark.png` and `/logo-wordmark-light.png` — the horizontal lockup with the name, 1600×480
 - `/opengraph-image` — the 1200×630 link-preview card; `/apple-icon` — the 180×180 touch icon
 
 Link previews in Messages, Slack and social sites need `NEXT_PUBLIC_SITE_URL` set to the public URL.

@@ -1,6 +1,6 @@
-import { logoLockup } from "@/lib/brand-image";
+import { logoMark } from "@/lib/brand-image";
 
-// A stable link for the logo (cached by Next). Use it from emails, booking pages and profiles.
+// The logo: the mark alone on ink. A stable link for emails, booking pages and profiles.
 export function GET() {
-  return logoLockup("dark");
+  return logoMark("dark");
 }

@@ -74,7 +74,7 @@ export function touchIcon() {
   );
 }
 
-/** The horizontal logo at /logo.png (on ink) and /logo-light.png (on paper): mark plus "ascent labs" wordmark. */
+/** The horizontal lockup with the name, at /logo-wordmark.png (on ink) and /logo-wordmark-light.png (on paper). */
 export function logoLockup(theme: "dark" | "light" = "dark") {
   const dark = theme === "dark";
   return new ImageResponse(
@@ -92,12 +92,14 @@ export function logoLockup(theme: "dark" | "light" = "dark") {
   );
 }
 
-/** The square mark alone at /logo-mark.png, for avatars and profile pictures. */
-export function logoMark() {
+/** The logo: the square mark alone, no wordmark. /logo.png on ink, /logo-light.png on paper, /logo-transparent.png
+ *  with no background (ink stroke, for placing on light surfaces). */
+export function logoMark(theme: "dark" | "light" | "transparent" = "dark") {
+  const bg = theme === "dark" ? INK : theme === "light" ? PAPER : "transparent";
   return new ImageResponse(
     (
-      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: INK }}>
-        <Mark px={680} stroke={2.2} />
+      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: bg }}>
+        <Mark px={680} stroke={2.2} color={theme === "dark" ? "white" : INK} />
       </div>
     ),
     MARK_SIZE,
